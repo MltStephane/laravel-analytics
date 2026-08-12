@@ -427,6 +427,112 @@ class DashboardServiceTest extends TestCase
         $this->assertNull($overview['comparison']['avgDuration']['change']);
     }
 
+    public function test_comparison_reports_new_for_zero_value_metrics_when_current_period_has_data(): void
+    {
+        $now = Carbon::now();
+        $visitor = Visitor::query()->create([
+            'uuid' => 'visitor-zero-value',
+            'first_seen_at' => $now->copy()->subDay(),
+            'last_seen_at' => $now->copy()->subDay(),
+        ]);
+        $session = Session::query()->create([
+            'visitor_id' => $visitor->id,
+            'hostname' => 'example.test',
+            'path' => '/single',
+            'started_at' => $now->copy()->subDay(),
+            'last_activity_at' => $now->copy()->subDay(),
+            'duration' => 0,
+            'bounced' => true,
+            'pages_count' => 1,
+        ]);
+        Event::query()->create([
+            'visitor_id' => $visitor->id,
+            'session_id' => $session->id,
+            'type' => 'pageview',
+            'url' => '/single',
+            'created_at' => $now->copy()->subDay(),
+        ]);
+
+        $overview = DashboardService::overview('7d');
+
+        // La période courante contient des données (1 session d'1 page, durée 0) :
+        // les KPI à valeur nulle sont quand même "Nouveaux", pas "sans données".
+        $this->assertTrue($overview['comparison']['avgDuration']['hasCurrent']);
+        $this->assertTrue($overview['comparison']['bounceRate']['hasCurrent']);
+        $this->assertTrue($overview['comparison']['viewsPerVisit']['hasCurrent']);
+        $this->assertTrue($overview['comparison']['visitors']['hasCurrent']);
+        $this->assertFalse($overview['comparison']['avgDuration']['hasPrevious']);
+        $this->assertNull($overview['comparison']['avgDuration']['change']);
+    }
+
+    public function test_previous_period_server_visitor_is_not_counted_as_activity(): void
+    {
+        $now = Carbon::now();
+
+        // Visiteur serveur (uuid configuré) : compté dans visitors/pageviews,
+        // mais exclu des sessions. Uniquement présent sur la période précédente.
+        $serverUuid = (string) config('analytics.server.visitor_uuid', 'server');
+        $serverVisitor = Visitor::query()->create([
+            'uuid' => $serverUuid,
+            'first_seen_at' => $now->copy()->subDays(10),
+            'last_seen_at' => $now->copy()->subDays(10),
+        ]);
+        $serverSession = Session::query()->create([
+            'visitor_id' => $serverVisitor->id,
+            'hostname' => 'example.test',
+            'path' => '/server',
+            'started_at' => $now->copy()->subDays(10),
+            'last_activity_at' => $now->copy()->subDays(10),
+            'duration' => 0,
+            'bounced' => true,
+            'pages_count' => 1,
+        ]);
+        Event::query()->create([
+            'visitor_id' => $serverVisitor->id,
+            'session_id' => $serverSession->id,
+            'type' => 'pageview',
+            'url' => '/server',
+            'created_at' => $now->copy()->subDays(10),
+        ]);
+
+        // Un visiteur réel sur la période courante.
+        $realVisitor = Visitor::query()->create([
+            'uuid' => 'visitor-real',
+            'first_seen_at' => $now->copy()->subDay(),
+            'last_seen_at' => $now->copy()->subDay(),
+        ]);
+        $realSession = Session::query()->create([
+            'visitor_id' => $realVisitor->id,
+            'hostname' => 'example.test',
+            'path' => '/real',
+            'started_at' => $now->copy()->subDay(),
+            'last_activity_at' => $now->copy()->subDay(),
+            'duration' => 0,
+            'bounced' => true,
+            'pages_count' => 1,
+        ]);
+        Event::query()->create([
+            'visitor_id' => $realVisitor->id,
+            'session_id' => $realSession->id,
+            'type' => 'pageview',
+            'url' => '/real',
+            'created_at' => $now->copy()->subDay(),
+        ]);
+
+        $overview = DashboardService::overview('7d');
+
+        // La période précédente ne contenait que du trafic serveur : ce n'est pas
+        // de l'activité réelle, donc aucun % de variation factice. AVANT le fix,
+        // visitors.hasPrevious valait true (visitors_prev = 1, le serveur).
+        foreach (['visitors', 'pageviews', 'viewsPerVisit', 'sessions'] as $key) {
+            $this->assertFalse($overview['comparison'][$key]['hasPrevious'], $key);
+            $this->assertNull($overview['comparison'][$key]['change'], $key);
+        }
+        $this->assertSame(1, $overview['comparison']['visitors']['previous']);
+        $this->assertSame(1, $overview['comparison']['pageviews']['previous']);
+        $this->assertSame(0, $overview['comparison']['sessions']['previous']);
+    }
+
     public function test_periods_with_data_is_empty_without_events(): void
     {
         $this->assertSame([], DashboardService::periodsWithData());

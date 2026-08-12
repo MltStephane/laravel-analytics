@@ -160,6 +160,54 @@ class DashboardViewTest extends TestCase
         $response->assertSee('Aucune donnée sur la période précédente — nouvelle activité détectée', false);
     }
 
+    public function test_dashboard_shows_new_badge_for_all_kpis_when_previous_period_is_empty(): void
+    {
+        $now = Carbon::now();
+        $createdAt = $now->copy()->subDay();
+
+        // Seeder identique à seedDashboardEvent mais avec une session bouncée
+        // d'1 page (duration 0) : la période courante a des données, la précédente est vide.
+        $visitor = Visitor::query()->create([
+            'uuid' => 'view-new-badges',
+            'browser' => 'Chrome',
+            'os' => 'Linux',
+            'country' => 'FR',
+            'device_type' => 'desktop',
+            'first_seen_at' => $createdAt,
+            'last_seen_at' => $createdAt,
+        ]);
+        $session = Session::query()->create([
+            'visitor_id' => $visitor->id,
+            'hostname' => 'example.test',
+            'path' => '/dashboard',
+            'started_at' => $createdAt,
+            'last_activity_at' => $createdAt,
+            'duration' => 0,
+            'bounced' => true,
+            'pages_count' => 1,
+        ]);
+        Event::query()->create([
+            'visitor_id' => $visitor->id,
+            'session_id' => $session->id,
+            'type' => 'pageview',
+            'url' => '/dashboard',
+            'created_at' => $createdAt,
+        ]);
+
+        $this->assertSame(1, Session::query()->whereBetween('started_at', [$now->copy()->subDays(7), $now])->count());
+        $this->assertSame(0, Session::query()->whereBetween('started_at', [$now->copy()->subDays(14), $now->copy()->subDays(7)])->count());
+
+        $this->withoutMiddleware();
+
+        $response = $this->get(route('analytics.dashboard', ['period' => '7d']));
+
+        $response->assertOk();
+        // Les 6 KPI affichent « Nouveau » : la présence de données courantes prime
+        // sur la valeur de la métrique (même nulle pour la durée moyenne).
+        $this->assertSame(6, substr_count((string) $response->getContent(), 'Nouveau'));
+        $response->assertDontSee('Aucune donnée sur cette période ni la précédente', false);
+    }
+
     public function test_dashboard_comparison_shows_percentage_when_both_periods_have_data(): void
     {
         $this->seedDashboardEvent(Carbon::now()->subDay(), 'view-both-current-1');

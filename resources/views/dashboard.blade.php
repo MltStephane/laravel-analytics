@@ -20,7 +20,7 @@
 
     $formatChange = function (array $metric): string {
         if (! $metric['hasPrevious']) {
-            return (float) $metric['current'] > 0 ? 'Nouveau' : '—';
+            return $metric['hasCurrent'] ? 'Nouveau' : '—';
         }
 
         if ($metric['change'] === null) {
@@ -36,7 +36,7 @@
 
     $changeTitle = function (array $metric): string {
         if (! $metric['hasPrevious']) {
-            return (float) $metric['current'] > 0
+            return $metric['hasCurrent']
                 ? 'Aucune donnée sur la période précédente — nouvelle activité détectée'
                 : 'Aucune donnée sur cette période ni la précédente';
         }
