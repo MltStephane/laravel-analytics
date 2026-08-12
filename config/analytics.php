@@ -57,9 +57,18 @@ return [
     | Browser tracker
     |--------------------------------------------------------------------------
     |
+    | script_path       : URL path serving the tracker script (GET). Keep the
+    |                     filename neutral: ad blockers (EasyPrivacy-style lists
+    |                     used by Brave, uBlock, ...) block any URL ending in
+    |                     "analytics.js" (the legacy Google Analytics filename),
+    |                     even self-hosted on the same origin.
+    | auto_track        : automatic pageviews from the JS tracker.
+    | respect_do_not_track : honor the browser Do-Not-Track flag.
+    |
     */
 
     'tracker' => [
+        'script_path' => 'js/tracker.js',
         'auto_track' => true,
         'respect_do_not_track' => true,
     ],

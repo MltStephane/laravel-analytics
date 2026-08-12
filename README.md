@@ -174,6 +174,7 @@ Deletes events older than `prune.days` (default 365, in chunks), then orphaned s
 | `dashboard.prefix` | `analytics` | Dashboard URL prefix |
 | `dashboard.middleware` | `['web', 'auth']` | Dashboard middleware stack |
 | `tracker.auto_track` | `true` | Automatic pageviews from the JS tracker |
+| `tracker.script_path` | `js/tracker.js` | URL path serving the tracker script. Use a neutral filename: blockers (Brave, uBlock) block any URL ending in `analytics.js` |
 | `tracker.respect_do_not_track` | `true` | Honor the browser Do-Not-Track flag |
 | `geolocation.driver` | `null` | Class implementing `LocationResolver` |
 | `prune.days` | `365` | Event retention in days |

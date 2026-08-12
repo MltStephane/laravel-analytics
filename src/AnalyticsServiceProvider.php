@@ -5,6 +5,7 @@ namespace MltStephane\LaravelAnalytics;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use MltStephane\LaravelAnalytics\Commands\PruneAnalyticsData;
 use MltStephane\LaravelAnalytics\Contracts\LocationResolver;
@@ -59,8 +60,13 @@ class AnalyticsServiceProvider extends ServiceProvider
         Blade::directive('analytics', function () {
             $endpoint = url(config('analytics.collect.uri'));
             $autoTrack = config('analytics.tracker.auto_track', true) ? '' : ' data-auto-track="false"';
+            $scriptPath = config('analytics.tracker.script_path', 'js/tracker.js');
 
-            return '<script defer src="'.e(url('/analytics/analytics.js')).'" data-endpoint="'.e($endpoint).'"'.$autoTrack.'></script>';
+            $src = Route::has('analytics.script')
+                ? route('analytics.script')
+                : url('/'.ltrim($scriptPath, '/'));
+
+            return '<script defer src="'.e($src).'" data-endpoint="'.e($endpoint).'"'.$autoTrack.'></script>';
         });
 
         // Rate limiting of the collection endpoint is handled by CollectMiddleware.

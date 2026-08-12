@@ -6,7 +6,7 @@ use MltStephane\LaravelAnalytics\Http\Controllers\CollectController;
 use MltStephane\LaravelAnalytics\Http\Controllers\DashboardController;
 
 // Script tracker (GET, public, hors CSRF)
-Route::get('/analytics/analytics.js', [AnalyticsScriptController::class, '__invoke'])
+Route::get(config('analytics.tracker.script_path', 'js/tracker.js'), [AnalyticsScriptController::class, '__invoke'])
     ->name('analytics.script');
 
 // Collecte (POST, public, middleware dédié)
