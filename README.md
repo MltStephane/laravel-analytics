@@ -9,13 +9,13 @@ Privacy-first analytics and observability for Laravel: track visitors and user a
 
 ## Features
 
-- **Dashboard** with visitors, pageviews, sessions started, pageviews per visitor, bounce rate, average visit duration, a time-series chart (24h/7d/30d/90d), top pages, sources, browsers, OS, devices, countries and events — aggregated SQL, server-rendered SVG chart, no external assets.
-- **Clean DX facade**: `Analytics::track()` / `Analytics::pageview()` from PHP, a one-line Blade directive, and a lightweight vanilla JS tracker (~2 Ko gzipped, `window.analytics.track()`, SPA-aware auto pageviews, `data-analytics` attributes).
-- **Privacy-first**: visitor identified by a client-side uuid kept in `localStorage`, no cookies, no fingerprinting, no IP stored, optional Do-Not-Track support.
-- **Sessions** with landing page, referrer domain, UTM parameters, bounce flag and duration (30 min inactivity window).
-- **Secure public collection endpoint**: POST-only, domain allow-list, per-IP rate limiting, bot detection ([device-detector](https://github.com/matomo-org/device-detector)), strictly validated and normalized payloads.
-- **Pluggable geolocation** through a `LocationResolver` contract (country / region / city).
-- **Data retention** command: `php artisan analytics:prune`.
+- **Built-in dashboard** — key metrics, time-series chart, top pages, sources, browsers, OS, devices, countries and events; server-rendered, no external assets (see [Dashboard](#dashboard)).
+- **One-line tracking** — `@analytics` Blade directive, `window.analytics.track()` from a ~2 Ko vanilla JS tracker, `Analytics::track()` / `Analytics::pageview()` from PHP, or declarative `data-analytics` attributes.
+- **Privacy-first** — no cookies, no fingerprinting, no stored IP; visitors are identified by a client-side uuid kept in `localStorage`; Do-Not-Track is honored by default.
+- **Sessions** — landing page, referrer domain, UTM parameters, bounce rate and visit duration, with a 30-minute inactivity window.
+- **Secure collection endpoint** — POST-only, domain allow-list, per-IP rate limit, bot detection and strictly validated payloads.
+- **Pluggable geolocation** — country / region / city through a `LocationResolver` contract (the IP is never stored).
+- **Data retention** — `php artisan analytics:prune` deletes events older than `prune.days` (default 365).
 
 ## Requirements
 
@@ -55,6 +55,10 @@ Add the tracker to your layout `<head>`:
 
 That's it: pageviews are sent automatically. Open the dashboard at `/analytics` and watch the data arrive.
 
+- Automatic pageviews cover the initial load and SPA navigation (`pushState`, `popstate`, `hashchange`).
+- Disable them on a page with `data-auto-track="false"` on the directive output.
+- The browser's Do-Not-Track flag is honored by default (`tracker.respect_do_not_track`).
+
 ### Tracking events from the browser
 
 The tracker exposes a small global API:
@@ -77,8 +81,6 @@ You can also track clicks declaratively with data attributes:
 ```
 
 Any extra `data-analytics-*` attribute is sent as event data.
-
-Pageviews are tracked automatically on load and on SPA navigation (`pushState`, `popstate`, `hashchange`). Set `data-auto-track="false"` on the directive output to disable automatic pageviews, and the browser's Do-Not-Track flag is honored by default (`tracker.respect_do_not_track`).
 
 ### Tracking events from PHP
 
@@ -118,13 +120,13 @@ Event data is normalized server-side (Umami-like rules):
 
 The dashboard lives at `/analytics` (configurable prefix and middleware — default `['web', 'auth']`) with periods `24h`, `7d`, `30d`, `90d`:
 
-- Stat cards: unique visitors, pageviews, sessions started during the selected period (`started_at`), pageviews per unique visitor, bounce rate and average visit duration, with a same-length previous-period comparison. A progressive inline help section explains all six metrics without requiring JavaScript.
-- Periods with no event in their window are hidden from the period switcher (the current period stays visible), so the available ranges stay meaningful even early on.
-- Interactive time series chart (hourly intervals on 24h, daily otherwise): pageviews + unique visitors per interval, with no external chart dependency, plus an accessible table and a screen-reader-only spoken summary of the displayed totals. The current incomplete interval is excluded. On small screens, the chart and wide tables keep their proportions and scroll horizontally through named keyboard-focusable regions.
-- Crossed content and acquisition data: top pages and sources include pageviews, unique visitors and pageviews-per-visitor ratios.
-- Audience mix and environments: unique visitors by device type (desktop / mobile / tablet), browsers and operating systems, in compact tables that fit the three-column grid.
-- Top countries (unique visitors) and top custom events (occurrences).
-- Last 20 events across all periods, with type badge, detail and visitor browser. A guided onboarding state is shown until the first visit is collected; an empty selected period is explained separately.
+- **Key metrics** — unique visitors, pageviews, sessions, pageviews per visitor, bounce rate and average visit duration, each compared to the previous period of the same length.
+- **Time-series chart** — pageviews and unique visitors per interval, server-rendered SVG with an accessible table and spoken summary; no chart dependency.
+- **Content & acquisition** — top pages and sources (pageviews, unique visitors, pages-per-visitor) and top countries (unique visitors).
+- **Audience** — unique visitors by device, browser and OS.
+- **Events** — top custom events and the 20 most recent events, with type badge and details.
+
+Periods without data are hidden from the period switcher, and clear empty states guide you from the first visit onward.
 
 ### Geolocation (custom driver)
 
