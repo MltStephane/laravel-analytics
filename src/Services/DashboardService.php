@@ -20,9 +20,11 @@ class DashboardService
      *     to: Carbon,
      *     visitors: int,
      *     pageviews: int,
+     *     sessions: int,
      *     viewsPerVisit: float,
      *     bounceRate: float,
      *     avgDuration: int,
+     *     comparison: array<string, array{current: int|float, previous: int|float, change: float|null}>,
      *     timeSeries: array<int, array{label: string, pageviews: int, visitors: int}>,
      *     topPages: Collection,
      *     topSources: Collection,
@@ -38,55 +40,30 @@ class DashboardService
     {
         [$from, $to] = self::periodRange($period);
 
-        $pageviews = Event::query()
-            ->ofType(EventType::Pageview)
-            ->whereBetween('created_at', [$from, $to])
-            ->count();
-
-        $visitors = Event::query()
-            ->whereBetween('created_at', [$from, $to])
-            ->distinct()
-            ->count('visitor_id');
-
-        // Sessions of the shared "server" visitor (Analytics facade /
-        // TrackPageview middleware) are excluded from session-level metrics:
-        // every server request is attached to that single visitor, which keeps
-        // its session open continuously and would dominate duration/bounce.
-        $excludeServerVisitor = function ($query) use ($from, $to) {
-            $query->whereBetween('started_at', [$from, $to])
-                ->whereNotIn('visitor_id', function ($sub) {
-                    $sub->select('id')
-                        ->from('analytics_visitors')
-                        ->where('uuid', (string) config('analytics.server.visitor_uuid', 'server'));
-                });
-        };
-
-        $bounceQuery = DB::table('analytics_sessions');
-        $excludeServerVisitor($bounceQuery);
-
-        $bounceStats = $bounceQuery
-            ->selectRaw('COUNT(*) as total, SUM(CASE WHEN bounced = 1 THEN 1 ELSE 0 END) as bounced')
-            ->first();
-
-        $bounceTotal = (int) ($bounceStats->total ?? 0);
-        $bounced = (int) ($bounceStats->bounced ?? 0);
-
-        $durationQuery = DB::table('analytics_sessions');
-        $excludeServerVisitor($durationQuery);
-
-        $avgDuration = max(0, (int) round(
-            $durationQuery->avg(DB::raw(self::durationExpression($to))) ?? 0
-        ));
+        $current = self::periodMetrics($from, $to);
+        $periodSeconds = $from->diffInSeconds($to);
+        $previousTo = $from->copy();
+        $previousFrom = $previousTo->copy()->subSeconds($periodSeconds);
+        $previous = self::periodMetrics($previousFrom, $previousTo, false);
 
         return [
             'period' => $period,
             'from' => $from,
             'to' => $to,
-            'visitors' => $visitors,
-            'pageviews' => $pageviews,
-            'viewsPerVisit' => $visitors > 0 ? round($pageviews / $visitors, 1) : 0.0,
-            'bounceRate' => $bounceTotal > 0 ? round($bounced / $bounceTotal * 100, 1) : 0.0,
-            'avgDuration' => $avgDuration,
+            'visitors' => $current['visitors'],
+            'pageviews' => $current['pageviews'],
+            'sessions' => $current['sessions'],
+            'viewsPerVisit' => $current['viewsPerVisit'],
+            'bounceRate' => $current['bounceRate'],
+            'avgDuration' => $current['avgDuration'],
+            'comparison' => [
+                'visitors' => self::comparison($current['visitors'], $previous['visitors']),
+                'pageviews' => self::comparison($current['pageviews'], $previous['pageviews']),
+                'sessions' => self::comparison($current['sessions'], $previous['sessions']),
+                'viewsPerVisit' => self::comparison($current['viewsPerVisit'], $previous['viewsPerVisit']),
+                'bounceRate' => self::comparison($current['bounceRate'], $previous['bounceRate']),
+                'avgDuration' => self::comparison($current['avgDuration'], $previous['avgDuration']),
+            ],
             'timeSeries' => self::timeSeries($period, $from, $to),
             'topPages' => self::topPages($from, $to, $limit),
             'topSources' => self::topSources($from, $to, $limit),
@@ -101,6 +78,89 @@ class DashboardService
                 ->limit(20)
                 ->get(),
         ];
+    }
+
+    /**
+     * @return array{visitors: int, pageviews: int, sessions: int, viewsPerVisit: float, bounceRate: float, avgDuration: int}
+     */
+    protected static function periodMetrics(Carbon $from, Carbon $to, bool $includeTo = true): array
+    {
+        $pageviewsQuery = Event::query()->ofType(EventType::Pageview);
+        self::applyPeriod($pageviewsQuery, 'created_at', $from, $to, $includeTo);
+        $pageviews = $pageviewsQuery->count();
+
+        $visitorsQuery = Event::query();
+        self::applyPeriod($visitorsQuery, 'created_at', $from, $to, $includeTo);
+        $visitors = $visitorsQuery->distinct()->count('visitor_id');
+
+        // Sessions of the shared "server" visitor (Analytics facade /
+        // TrackPageview middleware) are excluded from session-level metrics:
+        // every server request is attached to that single visitor, which keeps
+        // its session open continuously and would dominate duration/bounce.
+        $excludeServerVisitor = function ($query) use ($from, $to, $includeTo) {
+            self::applyPeriod($query, 'started_at', $from, $to, $includeTo);
+
+            $query->whereNotIn('visitor_id', function ($sub) {
+                $sub->select('id')
+                    ->from('analytics_visitors')
+                    ->where('uuid', (string) config('analytics.server.visitor_uuid', 'server'));
+            });
+        };
+
+        $sessionsQuery = DB::table('analytics_sessions');
+        $excludeServerVisitor($sessionsQuery);
+
+        $sessionStats = $sessionsQuery
+            ->selectRaw('COUNT(*) as total, SUM(CASE WHEN bounced = 1 THEN 1 ELSE 0 END) as bounced')
+            ->first();
+
+        $sessions = (int) ($sessionStats->total ?? 0);
+        $bounced = (int) ($sessionStats->bounced ?? 0);
+
+        $durationQuery = DB::table('analytics_sessions');
+        $excludeServerVisitor($durationQuery);
+
+        $avgDuration = max(0, (int) round(
+            $durationQuery->avg(DB::raw(self::durationExpression($to))) ?? 0
+        ));
+
+        return [
+            'visitors' => $visitors,
+            'pageviews' => $pageviews,
+            'sessions' => $sessions,
+            'viewsPerVisit' => $visitors > 0 ? round($pageviews / $visitors, 1) : 0.0,
+            'bounceRate' => $sessions > 0 ? round($bounced / $sessions * 100, 1) : 0.0,
+            'avgDuration' => $avgDuration,
+        ];
+    }
+
+    /**
+     * @return array{current: int|float, previous: int|float, change: float|null}
+     */
+    protected static function comparison(int|float $current, int|float $previous): array
+    {
+        $change = (float) $previous === 0.0
+            ? null
+            : round(($current - $previous) / $previous * 100, 1);
+
+        return [
+            'current' => $current,
+            'previous' => $previous,
+            'change' => $change,
+        ];
+    }
+
+    protected static function applyPeriod($query, string $column, Carbon $from, Carbon $to, bool $includeTo): void
+    {
+        if ($includeTo) {
+            $query->whereBetween($column, [$from, $to]);
+
+            return;
+        }
+
+        $query
+            ->where($column, '>=', $from)
+            ->where($column, '<', $to);
     }
 
     /**
@@ -189,14 +249,18 @@ class DashboardService
         $driver = DB::connection()->getDriverName();
 
         if ($granularity === 'hour') {
-            return $driver === 'sqlite'
-                ? "strftime('%Y-%m-%d %H:00', created_at)"
-                : "DATE_FORMAT(created_at, '%Y-%m-%d %H:00')";
+            return match ($driver) {
+                'sqlite' => "strftime('%Y-%m-%d %H:00', created_at)",
+                'pgsql' => "to_char(created_at, 'YYYY-MM-DD HH24:00')",
+                default => "DATE_FORMAT(created_at, '%Y-%m-%d %H:00')",
+            };
         }
 
-        return $driver === 'sqlite'
-            ? "strftime('%Y-%m-%d', created_at)"
-            : "DATE_FORMAT(created_at, '%Y-%m-%d')";
+        return match ($driver) {
+            'sqlite' => "strftime('%Y-%m-%d', created_at)",
+            'pgsql' => "to_char(created_at, 'YYYY-MM-DD')",
+            default => "DATE_FORMAT(created_at, '%Y-%m-%d')",
+        };
     }
 
     /**
@@ -229,7 +293,10 @@ class DashboardService
             ->groupBy('url')
             ->orderByDesc('pageviews')
             ->limit($limit)
-            ->get();
+            ->get()
+            ->each(function ($row) {
+                $row->pagesPerVisitor = self::pagesPerVisitor($row->pageviews, $row->visitors);
+            });
     }
 
     /**
@@ -241,11 +308,19 @@ class DashboardService
             ->join('analytics_sessions', 'analytics_sessions.id', '=', 'analytics_events.session_id')
             ->where('analytics_events.type', 'pageview')
             ->whereBetween('analytics_events.created_at', [$from, $to])
-            ->selectRaw("COALESCE(NULLIF(analytics_sessions.referrer_domain, ''), '(direct)') as source, COUNT(*) as pageviews")
+            ->selectRaw("COALESCE(NULLIF(analytics_sessions.referrer_domain, ''), '(direct)') as source, COUNT(*) as pageviews, COUNT(DISTINCT analytics_events.visitor_id) as visitors")
             ->groupBy('source')
             ->orderByDesc('pageviews')
             ->limit($limit)
-            ->get();
+            ->get()
+            ->each(function ($row) {
+                $row->pagesPerVisitor = self::pagesPerVisitor($row->pageviews, $row->visitors);
+            });
+    }
+
+    protected static function pagesPerVisitor(int|float $pageviews, int|float $visitors): float
+    {
+        return (float) $visitors > 0 ? round($pageviews / $visitors, 1) : 0.0;
     }
 
     /**
@@ -277,7 +352,7 @@ class DashboardService
                     WHEN 'smartphone' THEN 'Mobile'
                     WHEN 'tablet' THEN 'Tablette'
                     ELSE '(inconnu)'
-                END as label, COUNT(*) as count"
+                END as label, COUNT(DISTINCT analytics_events.visitor_id) as count"
             )
             ->groupBy('analytics_visitors.device_type')
             ->orderByDesc('count')

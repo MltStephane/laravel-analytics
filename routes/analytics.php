@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use MltStephane\LaravelAnalytics\Http\Controllers\AnalyticsScriptController;
 use MltStephane\LaravelAnalytics\Http\Controllers\CollectController;
 use MltStephane\LaravelAnalytics\Http\Controllers\DashboardController;
+use MltStephane\LaravelAnalytics\Http\Controllers\DashboardScriptController;
 
 // Script tracker (GET, public, hors CSRF)
 Route::get(config('analytics.tracker.script_path', 'js/tracker.js'), [AnalyticsScriptController::class, '__invoke'])
@@ -16,6 +17,9 @@ Route::post(config('analytics.collect.uri'), CollectController::class)
 
 // Dashboard
 if (config('analytics.dashboard.enabled')) {
+    Route::get('js/dashboard.js', DashboardScriptController::class)
+        ->name('analytics.dashboard.script');
+
     Route::prefix(config('analytics.dashboard.prefix'))
         ->middleware(config('analytics.dashboard.middleware'))
         ->group(function () {

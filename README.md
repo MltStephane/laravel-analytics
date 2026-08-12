@@ -118,10 +118,10 @@ Event data is normalized server-side (Umami-like rules):
 
 The dashboard lives at `/analytics` (configurable prefix and middleware — default `['web', 'auth']`) with periods `24h`, `7d`, `30d`, `90d`:
 
-- Stat cards: unique visitors, pageviews, pages/visit, bounce rate, average visit duration.
-- Time series chart (hourly buckets on 24h, daily otherwise): pageviews + unique visitors per bucket.
-- Top pages (url, pageviews, visitors), top sources (referrer domain or `(direct)`).
-- Environments: browsers, operating systems, device types (desktop / mobile / tablet).
+- Stat cards: unique visitors, pageviews, useful sessions, pages/visit, bounce rate and average visit duration, with a same-length previous-period comparison.
+- Interactive time series chart (hourly buckets on 24h, daily otherwise): pageviews + unique visitors per bucket, with no external chart dependency, plus an accessible table and a screen-reader-only spoken summary of the displayed totals. The current incomplete bucket is excluded.
+- Crossed content and acquisition data: top pages and sources include pageviews, unique visitors and pages/visitor ratios.
+- Audience mix and environments: unique visitors by device type (desktop / mobile / tablet), browsers and operating systems.
 - Top countries (unique visitors) and top custom events (occurrences).
 - Last 20 events with type badge, detail and visitor browser.
 
