@@ -7,6 +7,7 @@ use Illuminate\Support\Carbon;
 use MltStephane\LaravelAnalytics\Models\Event;
 use MltStephane\LaravelAnalytics\Models\Session;
 use MltStephane\LaravelAnalytics\Models\Visitor;
+use MltStephane\LaravelAnalytics\Support\ScriptAsset;
 use MltStephane\LaravelAnalytics\Tests\TestCase;
 
 class DashboardViewTest extends TestCase
@@ -369,6 +370,18 @@ class DashboardViewTest extends TestCase
         );
         $this->assertNotEmpty($matches[1]);
         $this->assertSame($expectedVersion, $matches[1]);
+    }
+
+    public function test_dashboard_script_src_is_versioned_with_content_hash(): void
+    {
+        $this->seedDashboardEvent(Carbon::now()->subDay());
+        $this->withoutMiddleware();
+
+        $response = $this->get(route('analytics.dashboard', ['period' => '7d']));
+
+        $response->assertOk();
+        $response->assertSee(route('analytics.dashboard.script', ['v' => ScriptAsset::hash('dashboard')]), false);
+        $this->assertStringContainsString('js/dashboard.js?v=', (string) $response->getContent());
     }
 
     public function test_dashboard_script_route_returns_static_javascript(): void

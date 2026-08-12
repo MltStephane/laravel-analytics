@@ -11,6 +11,7 @@ use MltStephane\LaravelAnalytics\Commands\PruneAnalyticsData;
 use MltStephane\LaravelAnalytics\Contracts\LocationResolver;
 use MltStephane\LaravelAnalytics\Http\Middleware\CollectMiddleware;
 use MltStephane\LaravelAnalytics\Http\Middleware\TrackPageview;
+use MltStephane\LaravelAnalytics\Support\ScriptAsset;
 
 class AnalyticsServiceProvider extends ServiceProvider
 {
@@ -63,8 +64,8 @@ class AnalyticsServiceProvider extends ServiceProvider
             $scriptPath = config('analytics.tracker.script_path', 'js/tracker.js');
 
             $src = Route::has('analytics.script')
-                ? route('analytics.script')
-                : url('/'.ltrim($scriptPath, '/'));
+                ? route('analytics.script', ['v' => ScriptAsset::hash('tracker')])
+                : url('/'.ltrim($scriptPath, '/')).'?v='.ScriptAsset::hash('tracker');
 
             return '<script defer src="'.e($src).'" data-endpoint="'.e($endpoint).'"'.$autoTrack.'></script>';
         });

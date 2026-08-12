@@ -437,5 +437,5 @@
         @endif
     </div>
 
-    <script defer src="{{ route('analytics.dashboard.script') }}"></script>
+    <script defer src="{{ route('analytics.dashboard.script', ['v' => $dashboardScriptHash]) }}"></script>
 @endsection

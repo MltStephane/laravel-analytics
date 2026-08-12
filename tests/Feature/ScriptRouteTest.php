@@ -3,6 +3,7 @@
 namespace MltStephane\LaravelAnalytics\Tests\Feature;
 
 use Illuminate\Support\Facades\Blade;
+use MltStephane\LaravelAnalytics\Support\ScriptAsset;
 use MltStephane\LaravelAnalytics\Tests\TestCase;
 
 class ScriptRouteTest extends TestCase
@@ -28,5 +29,7 @@ class ScriptRouteTest extends TestCase
         $this->assertStringContainsString(route('analytics.script'), $compiled);
         $this->assertStringNotContainsString('/analytics/analytics.js', $compiled);
         $this->assertStringContainsString('data-endpoint', $compiled);
+        $this->assertStringContainsString('?v=', $compiled);
+        $this->assertStringContainsString('v='.ScriptAsset::hash('tracker'), $compiled);
     }
 }

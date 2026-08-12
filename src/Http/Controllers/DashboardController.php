@@ -5,6 +5,7 @@ namespace MltStephane\LaravelAnalytics\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use MltStephane\LaravelAnalytics\Services\DashboardService;
+use MltStephane\LaravelAnalytics\Support\ScriptAsset;
 
 class DashboardController
 {
@@ -28,6 +29,7 @@ class DashboardController
         }
 
         $data['periods'] = $periods;
+        $data['dashboardScriptHash'] = ScriptAsset::hash('dashboard');
 
         return view('analytics::dashboard', $data);
     }
