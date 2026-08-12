@@ -48,17 +48,35 @@ class DashboardService
             ->distinct()
             ->count('visitor_id');
 
-        $bounceStats = DB::table('analytics_sessions')
-            ->whereBetween('started_at', [$from, $to])
+        // Sessions of the shared "server" visitor (Analytics facade /
+        // TrackPageview middleware) are excluded from session-level metrics:
+        // every server request is attached to that single visitor, which keeps
+        // its session open continuously and would dominate duration/bounce.
+        $excludeServerVisitor = function ($query) use ($from, $to) {
+            $query->whereBetween('started_at', [$from, $to])
+                ->whereNotIn('visitor_id', function ($sub) {
+                    $sub->select('id')
+                        ->from('analytics_visitors')
+                        ->where('uuid', (string) config('analytics.server.visitor_uuid', 'server'));
+                });
+        };
+
+        $bounceQuery = DB::table('analytics_sessions');
+        $excludeServerVisitor($bounceQuery);
+
+        $bounceStats = $bounceQuery
             ->selectRaw('COUNT(*) as total, SUM(CASE WHEN bounced = 1 THEN 1 ELSE 0 END) as bounced')
             ->first();
 
         $bounceTotal = (int) ($bounceStats->total ?? 0);
         $bounced = (int) ($bounceStats->bounced ?? 0);
 
-        $avgDuration = max(0, (int) round(DB::table('analytics_sessions')
-            ->whereBetween('started_at', [$from, $to])
-            ->avg(DB::raw(self::durationExpression())) ?? 0));
+        $durationQuery = DB::table('analytics_sessions');
+        $excludeServerVisitor($durationQuery);
+
+        $avgDuration = max(0, (int) round(
+            $durationQuery->avg(DB::raw(self::durationExpression($to))) ?? 0
+        ));
 
         return [
             'period' => $period,
@@ -183,14 +201,18 @@ class DashboardService
 
     /**
      * Dialect-aware session duration expression (sqlite vs mysql/postgres).
-     * Duration in seconds between the first and the last activity.
+     * Duration in seconds between the first activity and the end of the
+     * analyzed period (a session still active at the cutoff is not credited
+     * beyond it).
      */
-    protected static function durationExpression(): string
+    protected static function durationExpression(Carbon $to): string
     {
+        $end = $to->toDateTimeString();
+
         return match (DB::connection()->getDriverName()) {
-            'sqlite' => '(julianday(last_activity_at) - julianday(started_at)) * 86400',
-            'pgsql' => 'EXTRACT(EPOCH FROM (last_activity_at - started_at))',
-            default => 'TIMESTAMPDIFF(SECOND, started_at, last_activity_at)',
+            'sqlite' => "(julianday(MIN(last_activity_at, '{$end}')) - julianday(started_at)) * 86400",
+            'pgsql' => "EXTRACT(EPOCH FROM (LEAST(last_activity_at, '{$end}') - started_at))",
+            default => "TIMESTAMPDIFF(SECOND, started_at, LEAST(last_activity_at, '{$end}'))",
         };
     }
 
