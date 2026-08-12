@@ -241,7 +241,7 @@ class Analytics
      * Create the event row and update the session metrics.
      *
      * For pageviews: pages_count +1, bounced = pages_count < 2, duration =
-     * max(duration, now - started_at) when pages_count > 1.
+     * max(duration, last_activity_at - started_at) when pages_count > 1.
      */
     protected function record(
         Visitor $visitor,
@@ -263,9 +263,10 @@ class Analytics
             ]);
 
             if ($pagesCount > 1) {
-                $elapsed = Carbon::now()->diffInSeconds($session->started_at, false);
+                $elapsed = (int) $session->last_activity_at?->getTimestamp()
+                    - (int) $session->started_at->getTimestamp();
                 $session->update([
-                    'duration' => max((int) $session->duration, (int) $elapsed),
+                    'duration' => max((int) $session->duration, max(0, $elapsed)),
                 ]);
             }
         }

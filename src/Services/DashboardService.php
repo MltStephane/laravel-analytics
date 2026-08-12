@@ -7,7 +7,6 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use MltStephane\LaravelAnalytics\Enums\EventType;
 use MltStephane\LaravelAnalytics\Models\Event;
-use MltStephane\LaravelAnalytics\Models\Session;
 
 /**
  * Aggregated dashboard queries. Static, repository-style.
@@ -49,7 +48,7 @@ class DashboardService
             ->distinct()
             ->count('visitor_id');
 
-        $bounceStats = Session::query()
+        $bounceStats = DB::table('analytics_sessions')
             ->whereBetween('started_at', [$from, $to])
             ->selectRaw('COUNT(*) as total, SUM(CASE WHEN bounced = 1 THEN 1 ELSE 0 END) as bounced')
             ->first();
@@ -57,9 +56,9 @@ class DashboardService
         $bounceTotal = (int) ($bounceStats->total ?? 0);
         $bounced = (int) ($bounceStats->bounced ?? 0);
 
-        $avgDuration = (int) (Session::query()
+        $avgDuration = max(0, (int) round(DB::table('analytics_sessions')
             ->whereBetween('started_at', [$from, $to])
-            ->avg('duration') ?? 0);
+            ->avg(DB::raw(self::durationExpression())) ?? 0));
 
         return [
             'period' => $period,
@@ -180,6 +179,19 @@ class DashboardService
         return $driver === 'sqlite'
             ? "strftime('%Y-%m-%d', created_at)"
             : "DATE_FORMAT(created_at, '%Y-%m-%d')";
+    }
+
+    /**
+     * Dialect-aware session duration expression (sqlite vs mysql/postgres).
+     * Duration in seconds between the first and the last activity.
+     */
+    protected static function durationExpression(): string
+    {
+        return match (DB::connection()->getDriverName()) {
+            'sqlite' => '(julianday(last_activity_at) - julianday(started_at)) * 86400',
+            'pgsql' => 'EXTRACT(EPOCH FROM (last_activity_at - started_at))',
+            default => 'TIMESTAMPDIFF(SECOND, started_at, last_activity_at)',
+        };
     }
 
     /**

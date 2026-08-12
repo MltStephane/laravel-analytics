@@ -60,7 +60,7 @@ class DashboardServiceTest extends TestCase
             'path' => '/home',
             'referrer' => 'https://google.com/search?q=test',
             'referrer_domain' => 'google.com',
-            'started_at' => $now->copy()->subDay(),
+            'started_at' => $now->copy()->subMinutes(2),
             'last_activity_at' => $now,
             'duration' => 120,
             'bounced' => false,
