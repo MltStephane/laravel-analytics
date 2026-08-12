@@ -135,16 +135,88 @@ class DashboardViewTest extends TestCase
         }
     }
 
-    public function test_dashboard_shows_a_dash_for_an_empty_comparison(): void
+    public function test_dashboard_hides_comparison_when_no_data_at_all(): void
     {
         $this->withoutMiddleware();
 
         $response = $this->get(route('analytics.dashboard', ['period' => '7d']));
 
         $response->assertOk();
-        $response->assertSee('—', false);
+        $response->assertDontSee('vs période précédente', false);
         $response->assertDontSee('id="traffic-chart-summary"', false);
         $response->assertDontSee('<details class="chart-data-details">', false);
+    }
+
+    public function test_dashboard_hides_comparison_when_previous_reference_value_is_zero(): void
+    {
+        $now = Carbon::now();
+
+        // Période courante : 1 session rebondie d'1 page, durée 60 s.
+        $visitorCurrent = Visitor::query()->create([
+            'uuid' => 'view-zero-ref-current',
+            'browser' => 'Chrome',
+            'device_type' => 'desktop',
+            'first_seen_at' => $now->copy()->subDay(),
+            'last_seen_at' => $now->copy()->subDay(),
+        ]);
+        $sessionCurrent = Session::query()->create([
+            'visitor_id' => $visitorCurrent->id,
+            'hostname' => 'example.test',
+            'path' => '/current',
+            'started_at' => $now->copy()->subDay(),
+            'last_activity_at' => $now->copy()->subDay()->addSeconds(60),
+            'duration' => 60,
+            'bounced' => true,
+            'pages_count' => 1,
+        ]);
+        Event::query()->create([
+            'visitor_id' => $visitorCurrent->id,
+            'session_id' => $sessionCurrent->id,
+            'type' => 'pageview',
+            'url' => '/current',
+            'created_at' => $now->copy()->subDay(),
+        ]);
+
+        // Période précédente : 1 session non rebondie, durée 0 → les références
+        // de rebond (0/1) et de durée (0) sont nulles (hasPrevious=true, change=null).
+        $visitorPrevious = Visitor::query()->create([
+            'uuid' => 'view-zero-ref-previous',
+            'browser' => 'Chrome',
+            'device_type' => 'desktop',
+            'first_seen_at' => $now->copy()->subDays(10),
+            'last_seen_at' => $now->copy()->subDays(10),
+        ]);
+        $sessionPrevious = Session::query()->create([
+            'visitor_id' => $visitorPrevious->id,
+            'hostname' => 'example.test',
+            'path' => '/previous',
+            'started_at' => $now->copy()->subDays(10),
+            'last_activity_at' => $now->copy()->subDays(10),
+            'duration' => 0,
+            'bounced' => false,
+            'pages_count' => 1,
+        ]);
+        Event::query()->create([
+            'visitor_id' => $visitorPrevious->id,
+            'session_id' => $sessionPrevious->id,
+            'type' => 'pageview',
+            'url' => '/previous',
+            'created_at' => $now->copy()->subDays(10),
+        ]);
+
+        $this->withoutMiddleware();
+        $response = $this->get(route('analytics.dashboard', ['period' => '7d']));
+        $response->assertOk();
+
+        $html = (string) $response->getContent();
+
+        // Seuls 4 KPI (visitors, pageviews, sessions, viewsPerVisit) affichent le bloc
+        // de comparaison ; bounceRate et avgDuration ont une référence précédente nulle.
+        $this->assertSame(4, substr_count($html, 'vs période précédente'));
+        // Cible le span de variation uniquement (évite les sous-chaînes « 0 % » de « 100,0 % »
+        // dans les panneaux Sources et Appareils, présents avec ce seed).
+        $this->assertSame(4, substr_count($html, '>0 %</span>'));
+        $this->assertStringNotContainsString('La période précédente contenait des données, mais la valeur de référence est nulle', $html);
     }
 
     public function test_dashboard_shows_new_badge_when_only_current_period_has_data(): void

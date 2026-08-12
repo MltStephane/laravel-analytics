@@ -156,14 +156,17 @@
                 $change = $metricComparison['change'];
                 $isFavorable = $change !== null && $change !== 0.0 && ($kpi['invert'] ? $change < 0 : $change > 0);
                 $changeClass = $change === null || $change === 0.0 ? 'neutral' : ($isFavorable ? 'positive' : 'negative');
+                $showComparison = $change !== null || ($metricComparison['hasCurrent'] && ! $metricComparison['hasPrevious']);
             @endphp
             <div class="card">
                 <div class="label">{{ $kpi['label'] }}</div>
                 <div class="value">{{ $kpi['value'] }}@if ($kpi['suffix'] !== '')<span class="suffix">{{ $kpi['suffix'] }}</span>@endif</div>
+                @if ($showComparison)
                 <div class="comparison">
                     <span class="change {{ $changeClass }}" title="{{ $changeTitle($metricComparison) }}">{{ $formatChange($metricComparison) }}</span>
                     <span class="comparison-label">vs période précédente</span>
                 </div>
+                @endif
             </div>
         @endforeach
     </div>
