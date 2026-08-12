@@ -128,7 +128,11 @@ class DashboardServiceTest extends TestCase
         $this->assertSame(100.0, $overview['comparison']['sessions']['change']);
         $this->assertSame(50.0, $overview['comparison']['viewsPerVisit']['change']);
         $this->assertSame(-50.0, $overview['comparison']['bounceRate']['change']);
+        // avgDuration prev = 0.0 (session /old de durée nulle) mais la période
+        // précédente contenait des sessions (sessions_prev = 1) : le flag
+        // hasPrevious reste true, seul le change est null (référence nulle).
         $this->assertNull($overview['comparison']['avgDuration']['change']);
+        $this->assertTrue($overview['comparison']['avgDuration']['hasPrevious']);
 
         $topUrls = $overview['topPages']->pluck('url')->all();
         $this->assertContains('/home', $topUrls);
@@ -277,5 +281,123 @@ class DashboardServiceTest extends TestCase
         $this->assertNull($overview['comparison']['sessions']['change']);
         $this->assertNull($overview['comparison']['viewsPerVisit']['change']);
         $this->assertNull($overview['comparison']['bounceRate']['change']);
+        $this->assertFalse($overview['comparison']['visitors']['hasPrevious']);
+    }
+
+    public function test_comparison_ratio_keeps_previous_data_flag_when_value_is_zero(): void
+    {
+        $now = Carbon::now();
+
+        $visitor = Visitor::query()->create([
+            'uuid' => 'visitor-ratio-zero',
+            'first_seen_at' => $now->copy()->subDays(10),
+            'last_seen_at' => $now->copy()->subDay(),
+        ]);
+
+        // Session précédente : aucune session bouncée, durée nulle → les ratios
+        // valent 0.0 sans pour autant signifier "pas de données".
+        $previousSession = Session::query()->create([
+            'visitor_id' => $visitor->id,
+            'hostname' => 'example.test',
+            'path' => '/prev',
+            'started_at' => $now->copy()->subDays(10),
+            'last_activity_at' => $now->copy()->subDays(10),
+            'duration' => 0,
+            'bounced' => false,
+            'pages_count' => 2,
+        ]);
+
+        Event::query()->create([
+            'visitor_id' => $visitor->id,
+            'session_id' => $previousSession->id,
+            'type' => 'pageview',
+            'url' => '/prev',
+            'created_at' => $now->copy()->subDays(10),
+        ]);
+
+        // Session courante, même profil (non bouncée, durée nulle).
+        $currentSession = Session::query()->create([
+            'visitor_id' => $visitor->id,
+            'hostname' => 'example.test',
+            'path' => '/current',
+            'started_at' => $now->copy()->subDay(),
+            'last_activity_at' => $now->copy()->subDay(),
+            'duration' => 0,
+            'bounced' => false,
+            'pages_count' => 2,
+        ]);
+
+        Event::query()->create([
+            'visitor_id' => $visitor->id,
+            'session_id' => $currentSession->id,
+            'type' => 'pageview',
+            'url' => '/current',
+            'created_at' => $now->copy()->subDay(),
+        ]);
+
+        $overview = DashboardService::overview('7d');
+
+        // bounceRate et avgDuration valent 0.0 sur la période précédente, mais
+        // la période précédente contenait des sessions → hasPrevious true, seul
+        // le change est null (valeur de référence nulle).
+        $this->assertTrue($overview['comparison']['bounceRate']['hasPrevious']);
+        $this->assertNull($overview['comparison']['bounceRate']['change']);
+        $this->assertTrue($overview['comparison']['avgDuration']['hasPrevious']);
+        $this->assertNull($overview['comparison']['avgDuration']['change']);
+
+        // 1 session courante vs 1 session précédente → variation nulle.
+        $this->assertTrue($overview['comparison']['sessions']['hasPrevious']);
+        $this->assertSame(0.0, $overview['comparison']['sessions']['change']);
+    }
+
+    public function test_comparison_reports_full_drop_when_previous_period_had_data(): void
+    {
+        $now = Carbon::now();
+
+        $visitor = Visitor::query()->create([
+            'uuid' => 'visitor-full-drop',
+            'first_seen_at' => $now->copy()->subDays(10),
+            'last_seen_at' => $now->copy()->subDays(10),
+        ]);
+
+        // Période précédente : 1 session bouncée + 1 page vue. Période courante vide.
+        $session = Session::query()->create([
+            'visitor_id' => $visitor->id,
+            'hostname' => 'example.test',
+            'path' => '/drop',
+            'started_at' => $now->copy()->subDays(10),
+            'last_activity_at' => $now->copy()->subDays(10),
+            'duration' => 0,
+            'bounced' => true,
+            'pages_count' => 1,
+        ]);
+
+        Event::query()->create([
+            'visitor_id' => $visitor->id,
+            'session_id' => $session->id,
+            'type' => 'pageview',
+            'url' => '/drop',
+            'created_at' => $now->copy()->subDays(10),
+        ]);
+
+        $overview = DashboardService::overview('7d');
+
+        $this->assertSame(0, $overview['visitors']);
+        $this->assertSame(0, $overview['pageviews']);
+        $this->assertSame(0, $overview['sessions']);
+
+        // Compteurs : baisse complète, mais la période précédente avait des données.
+        foreach (['visitors', 'pageviews', 'sessions'] as $key) {
+            $this->assertTrue($overview['comparison'][$key]['hasPrevious']);
+            $this->assertSame(-100.0, $overview['comparison'][$key]['change']);
+        }
+
+        // bounceRate : 100.0 (1/1 session bouncée) → 0.0 (aucune session courante).
+        $this->assertTrue($overview['comparison']['bounceRate']['hasPrevious']);
+        $this->assertSame(-100.0, $overview['comparison']['bounceRate']['change']);
+
+        // avgDuration : référence nulle (durée 0 sur la période précédente) → null.
+        $this->assertTrue($overview['comparison']['avgDuration']['hasPrevious']);
+        $this->assertNull($overview['comparison']['avgDuration']['change']);
     }
 }

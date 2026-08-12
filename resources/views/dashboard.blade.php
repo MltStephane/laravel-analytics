@@ -19,8 +19,12 @@
     };
 
     $formatChange = function (array $metric): string {
+        if (! $metric['hasPrevious']) {
+            return (float) $metric['current'] > 0 ? 'Nouveau' : '—';
+        }
+
         if ($metric['change'] === null) {
-            return (float) $metric['current'] > 0 && (float) $metric['previous'] === 0.0 ? 'Nouveau' : '—';
+            return '—';
         }
 
         if ((float) $metric['change'] === 0.0) {
@@ -28,6 +32,22 @@
         }
 
         return ($metric['change'] > 0 ? '+' : '−').number_format(abs($metric['change']), 1, ',', ' ').' %';
+    };
+
+    $changeTitle = function (array $metric): string {
+        if (! $metric['hasPrevious']) {
+            return (float) $metric['current'] > 0
+                ? 'Aucune donnée sur la période précédente — nouvelle activité détectée'
+                : 'Aucune donnée sur cette période ni la précédente';
+        }
+
+        if ($metric['change'] === null) {
+            return 'La période précédente contenait des données, mais la valeur de référence est nulle : variation non calculable';
+        }
+
+        $fmt = fn (int|float $v): string => (float) $v === (float) (int) $v ? (string) (int) $v : (string) round((float) $v, 1);
+
+        return 'Valeur actuelle : '.$fmt($metric['current']).' — période précédente : '.$fmt($metric['previous']);
     };
 
     $countryNames = [
@@ -129,7 +149,7 @@
                 <div class="label">{{ $kpi['label'] }}</div>
                 <div class="value">{{ $kpi['value'] }}@if ($kpi['suffix'] !== '')<span class="suffix">{{ $kpi['suffix'] }}</span>@endif</div>
                 <div class="comparison">
-                    <span class="change {{ $changeClass }}">{{ $formatChange($metricComparison) }}</span>
+                    <span class="change {{ $changeClass }}" title="{{ $changeTitle($metricComparison) }}">{{ $formatChange($metricComparison) }}</span>
                     <span class="comparison-label">vs période précédente</span>
                 </div>
             </div>

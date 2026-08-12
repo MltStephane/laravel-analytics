@@ -24,7 +24,7 @@ class DashboardService
      *     viewsPerVisit: float,
      *     bounceRate: float,
      *     avgDuration: int,
-     *     comparison: array<string, array{current: int|float, previous: int|float, change: float|null}>,
+     *     comparison: array<string, array{current: int|float, previous: int|float, hasPrevious: bool, change: float|null}>,
      *     timeSeries: array<int, array{label: string, pageviews: int, visitors: int}>,
      *     topPages: Collection,
      *     topSources: Collection,
@@ -57,12 +57,12 @@ class DashboardService
             'bounceRate' => $current['bounceRate'],
             'avgDuration' => $current['avgDuration'],
             'comparison' => [
-                'visitors' => self::comparison($current['visitors'], $previous['visitors']),
-                'pageviews' => self::comparison($current['pageviews'], $previous['pageviews']),
-                'sessions' => self::comparison($current['sessions'], $previous['sessions']),
-                'viewsPerVisit' => self::comparison($current['viewsPerVisit'], $previous['viewsPerVisit']),
-                'bounceRate' => self::comparison($current['bounceRate'], $previous['bounceRate']),
-                'avgDuration' => self::comparison($current['avgDuration'], $previous['avgDuration']),
+                'visitors' => self::comparison($current['visitors'], $previous['visitors'], $previous['visitors'] > 0),
+                'pageviews' => self::comparison($current['pageviews'], $previous['pageviews'], $previous['pageviews'] > 0),
+                'sessions' => self::comparison($current['sessions'], $previous['sessions'], $previous['sessions'] > 0),
+                'viewsPerVisit' => self::comparison($current['viewsPerVisit'], $previous['viewsPerVisit'], $previous['visitors'] > 0),
+                'bounceRate' => self::comparison($current['bounceRate'], $previous['bounceRate'], $previous['sessions'] > 0),
+                'avgDuration' => self::comparison($current['avgDuration'], $previous['avgDuration'], $previous['sessions'] > 0),
             ],
             'timeSeries' => self::timeSeries($period, $from, $to),
             'topPages' => self::topPages($from, $to, $limit),
@@ -135,17 +135,18 @@ class DashboardService
     }
 
     /**
-     * @return array{current: int|float, previous: int|float, change: float|null}
+     * @return array{current: int|float, previous: int|float, hasPrevious: bool, change: float|null}
      */
-    protected static function comparison(int|float $current, int|float $previous): array
+    protected static function comparison(int|float $current, int|float $previous, bool $hasPreviousData): array
     {
-        $change = (float) $previous === 0.0
+        $change = ! $hasPreviousData || (float) $previous === 0.0
             ? null
             : round(($current - $previous) / $previous * 100, 1);
 
         return [
             'current' => $current,
             'previous' => $previous,
+            'hasPrevious' => $hasPreviousData,
             'change' => $change,
         ];
     }

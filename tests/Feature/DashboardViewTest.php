@@ -144,6 +144,34 @@ class DashboardViewTest extends TestCase
         $response->assertDontSee('<details class="chart-data-details">', false);
     }
 
+    public function test_dashboard_shows_new_badge_when_only_current_period_has_data(): void
+    {
+        $this->seedDashboardEvent(Carbon::now()->subDay());
+
+        $this->withoutMiddleware();
+
+        $response = $this->get(route('analytics.dashboard', ['period' => '7d']));
+
+        $response->assertOk();
+        $response->assertSee('Nouveau');
+        $response->assertSee('Aucune donnée sur la période précédente — nouvelle activité détectée', false);
+    }
+
+    public function test_dashboard_comparison_shows_percentage_when_both_periods_have_data(): void
+    {
+        $this->seedDashboardEvent(Carbon::now()->subDay(), 'view-both-current-1');
+        $this->seedDashboardEvent(Carbon::now()->subDays(2), 'view-both-current-2');
+        $this->seedDashboardEvent(Carbon::now()->subDays(10), 'view-both-previous');
+
+        $this->withoutMiddleware();
+
+        $response = $this->get(route('analytics.dashboard', ['period' => '7d']));
+
+        $response->assertOk();
+        // 2 pages vues courantes vs 1 sur la période précédente → +100,0 %.
+        $response->assertSee('+100,0 %', false);
+    }
+
     public function test_dashboard_footer_displays_the_package_version_or_safe_fallback(): void
     {
         $expectedVersion = 'dev';
