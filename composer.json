@@ -1,0 +1,52 @@
+{
+    "name": "mltstephane/laravel-analytics",
+    "description": "Privacy-first analytics package for Laravel: track visitors and user actions without cookies, with a built-in dashboard, pageviews, sessions, bounce rate and visit duration.",
+    "type": "library",
+    "license": "MIT",
+    "keywords": [
+        "laravel",
+        "analytics",
+        "tracking",
+        "privacy",
+        "umami"
+    ],
+    "require": {
+        "php": "^8.2",
+        "laravel/framework": "^11.0|^12.0|^13.0",
+        "matomo/device-detector": "^6.4"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^9.0|^10.0|^11.0",
+        "phpunit/phpunit": "^11.0|^12.0",
+        "laravel/pint": "^1.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "MltStephane\\LaravelAnalytics\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "MltStephane\\LaravelAnalytics\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "MltStephane\\LaravelAnalytics\\AnalyticsServiceProvider"
+            ],
+            "aliases": {
+                "Analytics": "MltStephane\\LaravelAnalytics\\Facades\\Analytics"
+            }
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "fix": "pint"
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

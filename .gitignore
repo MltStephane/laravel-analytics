@@ -1,0 +1,18 @@
+# Dependencies (Composer)
+/vendor/
+
+# Composer lock — libraries do not commit it (Composer recommendation).
+# Remove this line if you prefer to pin the dev dependency set.
+composer.lock
+
+# PHPUnit cache
+.phpunit.cache/
+.phpunit.result.cache
+
+# Logs
+*.log
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
