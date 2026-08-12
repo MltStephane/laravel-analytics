@@ -11,6 +11,32 @@ use MltStephane\LaravelAnalytics\Tests\TestCase;
 
 class DashboardServiceTest extends TestCase
 {
+    private function seedEventAt(Carbon $createdAt, string $suffix): void
+    {
+        $visitor = Visitor::query()->create([
+            'uuid' => 'period-'.$suffix,
+            'first_seen_at' => $createdAt,
+            'last_seen_at' => $createdAt,
+        ]);
+        $session = Session::query()->create([
+            'visitor_id' => $visitor->id,
+            'hostname' => 'example.test',
+            'path' => '/period',
+            'started_at' => $createdAt,
+            'last_activity_at' => $createdAt,
+            'duration' => 0,
+            'bounced' => true,
+            'pages_count' => 1,
+        ]);
+        Event::query()->create([
+            'visitor_id' => $visitor->id,
+            'session_id' => $session->id,
+            'type' => 'pageview',
+            'url' => '/period',
+            'created_at' => $createdAt,
+        ]);
+    }
+
     protected function seedOverviewData(): array
     {
         $now = Carbon::now();
@@ -399,5 +425,58 @@ class DashboardServiceTest extends TestCase
         // avgDuration : référence nulle (durée 0 sur la période précédente) → null.
         $this->assertTrue($overview['comparison']['avgDuration']['hasPrevious']);
         $this->assertNull($overview['comparison']['avgDuration']['change']);
+    }
+
+    public function test_periods_with_data_is_empty_without_events(): void
+    {
+        $this->assertSame([], DashboardService::periodsWithData());
+    }
+
+    public function test_periods_with_data_derives_nested_windows_from_the_latest_bounded_event(): void
+    {
+        Carbon::setTestNow('2026-08-12 12:00:00');
+
+        try {
+            $cases = [
+                '24-hours' => [Carbon::now()->subHours(24), ['24h', '7d', '30d', '90d']],
+                '7-days' => [Carbon::now()->subDays(7), ['7d', '30d', '90d']],
+                '30-days' => [Carbon::now()->subDays(30), ['30d', '90d']],
+                '90-days' => [Carbon::now()->subDays(90), ['90d']],
+            ];
+
+            foreach ($cases as $suffix => [$createdAt, $expected]) {
+                Event::query()->delete();
+                Session::query()->delete();
+                Visitor::query()->delete();
+                $this->seedEventAt($createdAt, $suffix);
+
+                $this->assertSame($expected, DashboardService::periodsWithData(), $suffix);
+            }
+        } finally {
+            Carbon::setTestNow(null);
+        }
+    }
+
+    public function test_periods_with_data_ignores_future_and_older_than_90_day_events(): void
+    {
+        Carbon::setTestNow('2026-08-12 12:00:00');
+
+        try {
+            $this->seedEventAt(Carbon::now()->addSecond(), 'future');
+            $this->seedEventAt(Carbon::now()->subDays(90)->subSecond(), 'old');
+
+            $this->assertSame([], DashboardService::periodsWithData());
+        } finally {
+            Carbon::setTestNow(null);
+        }
+    }
+
+    public function test_periods_with_data_uses_without_mutating_the_provided_bound(): void
+    {
+        $now = Carbon::parse('2026-08-12 12:00:00');
+        $this->seedEventAt($now->copy()->subHours(24), 'provided-bound');
+
+        $this->assertSame(['24h', '7d', '30d', '90d'], DashboardService::periodsWithData($now));
+        $this->assertSame('2026-08-12 12:00:00', $now->toDateTimeString());
     }
 }

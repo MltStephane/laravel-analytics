@@ -73,11 +73,43 @@ class DashboardService
             'topCountries' => self::topCountries($from, $to, $limit),
             'topEvents' => self::topEvents($from, $to, $limit),
             'recentEvents' => Event::query()
-                ->with(['visitor', 'session'])
+                ->with('visitor')
                 ->latest('created_at')
                 ->limit(20)
                 ->get(),
         ];
+    }
+
+    /**
+     * Period keys that have at least one event in their sliding window,
+     * in canonical order (24h, 7d, 30d, 90d).
+     *
+     * @param  Carbon|null  $now  Upper bound shared with dashboard metrics.
+     * @return array<int, string>
+     */
+    public static function periodsWithData(?Carbon $now = null): array
+    {
+        $now = ($now ?? Carbon::now())->copy();
+        $latestCreatedAt = Event::query()
+            ->whereBetween('created_at', [$now->copy()->subDays(90), $now])
+            ->max('created_at');
+
+        if ($latestCreatedAt === null) {
+            return [];
+        }
+
+        $latest = Carbon::parse($latestCreatedAt);
+        $windows = [
+            '24h' => $now->copy()->subHours(24),
+            '7d' => $now->copy()->subDays(7),
+            '30d' => $now->copy()->subDays(30),
+            '90d' => $now->copy()->subDays(90),
+        ];
+
+        return array_keys(array_filter(
+            $windows,
+            fn (Carbon $from): bool => $latest->gte($from)
+        ));
     }
 
     /**

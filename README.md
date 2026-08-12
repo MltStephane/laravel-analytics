@@ -9,7 +9,7 @@ Privacy-first analytics and observability for Laravel: track visitors and user a
 
 ## Features
 
-- **Dashboard** with visitors, pageviews, pages/visit, bounce rate, average visit duration, a time-series chart (24h/7d/30d/90d), top pages, sources, browsers, OS, devices, countries and events — aggregated SQL, server-rendered SVG chart, no external assets.
+- **Dashboard** with visitors, pageviews, sessions started, pageviews per visitor, bounce rate, average visit duration, a time-series chart (24h/7d/30d/90d), top pages, sources, browsers, OS, devices, countries and events — aggregated SQL, server-rendered SVG chart, no external assets.
 - **Clean DX facade**: `Analytics::track()` / `Analytics::pageview()` from PHP, a one-line Blade directive, and a lightweight vanilla JS tracker (~2 Ko gzipped, `window.analytics.track()`, SPA-aware auto pageviews, `data-analytics` attributes).
 - **Privacy-first**: visitor identified by a client-side uuid kept in `localStorage`, no cookies, no fingerprinting, no IP stored, optional Do-Not-Track support.
 - **Sessions** with landing page, referrer domain, UTM parameters, bounce flag and duration (30 min inactivity window).
@@ -118,12 +118,13 @@ Event data is normalized server-side (Umami-like rules):
 
 The dashboard lives at `/analytics` (configurable prefix and middleware — default `['web', 'auth']`) with periods `24h`, `7d`, `30d`, `90d`:
 
-- Stat cards: unique visitors, pageviews, useful sessions, pages/visit, bounce rate and average visit duration, with a same-length previous-period comparison.
-- Interactive time series chart (hourly buckets on 24h, daily otherwise): pageviews + unique visitors per bucket, with no external chart dependency, plus an accessible table and a screen-reader-only spoken summary of the displayed totals. The current incomplete bucket is excluded.
-- Crossed content and acquisition data: top pages and sources include pageviews, unique visitors and pages/visitor ratios.
-- Audience mix and environments: unique visitors by device type (desktop / mobile / tablet), browsers and operating systems.
+- Stat cards: unique visitors, pageviews, sessions started during the selected period (`started_at`), pageviews per unique visitor, bounce rate and average visit duration, with a same-length previous-period comparison. A progressive inline help section explains all six metrics without requiring JavaScript.
+- Periods with no event in their window are hidden from the period switcher (the current period stays visible), so the available ranges stay meaningful even early on.
+- Interactive time series chart (hourly intervals on 24h, daily otherwise): pageviews + unique visitors per interval, with no external chart dependency, plus an accessible table and a screen-reader-only spoken summary of the displayed totals. The current incomplete interval is excluded. On small screens, the chart and wide tables keep their proportions and scroll horizontally through named keyboard-focusable regions.
+- Crossed content and acquisition data: top pages and sources include pageviews, unique visitors and pageviews-per-visitor ratios.
+- Audience mix and environments: unique visitors by device type (desktop / mobile / tablet), browsers and operating systems, in compact tables that fit the three-column grid.
 - Top countries (unique visitors) and top custom events (occurrences).
-- Last 20 events with type badge, detail and visitor browser.
+- Last 20 events across all periods, with type badge, detail and visitor browser. A guided onboarding state is shown until the first visit is collected; an empty selected period is explained separately.
 
 ### Geolocation (custom driver)
 

@@ -5,7 +5,7 @@
 @endsection
 
 @section('period-links')
-    @foreach (['24h' => '24 h', '7d' => '7 jours', '30d' => '30 jours', '90d' => '90 jours'] as $key => $label)
+    @foreach ($periods as $key => $label)
         <a href="{{ route('analytics.dashboard', ['period' => $key]) }}" class="{{ $period === $key ? 'active' : '' }}" @if ($period === $key) aria-current="page" @endif>{{ $label }}</a>
     @endforeach
 @endsection
@@ -61,8 +61,8 @@
     $kpis = [
         ['key' => 'visitors', 'label' => 'Visiteurs uniques', 'value' => number_format($visitors, 0, ',', ' '), 'suffix' => '', 'invert' => false],
         ['key' => 'pageviews', 'label' => 'Pages vues', 'value' => number_format($pageviews, 0, ',', ' '), 'suffix' => '', 'invert' => false],
-        ['key' => 'sessions', 'label' => 'Sessions utiles', 'value' => number_format($sessions, 0, ',', ' '), 'suffix' => '', 'invert' => false],
-        ['key' => 'viewsPerVisit', 'label' => 'Pages / visite', 'value' => number_format($viewsPerVisit, 1, ',', ' '), 'suffix' => '', 'invert' => false],
+        ['key' => 'sessions', 'label' => 'Sessions démarrées', 'value' => number_format($sessions, 0, ',', ' '), 'suffix' => '', 'invert' => false],
+        ['key' => 'viewsPerVisit', 'label' => 'Pages vues / visiteur', 'value' => number_format($viewsPerVisit, 1, ',', ' '), 'suffix' => '', 'invert' => false],
         ['key' => 'bounceRate', 'label' => 'Taux de rebond', 'value' => number_format($bounceRate, 1, ',', ' '), 'suffix' => '%', 'invert' => true],
         ['key' => 'avgDuration', 'label' => 'Durée moyenne', 'value' => $fmtDuration($avgDuration), 'suffix' => '', 'invert' => false],
     ];
@@ -73,7 +73,7 @@
     $n = count($timeSeries);
     $chartPageviews = (int) collect($timeSeries)->sum('pageviews');
     $chartVisitors = (int) collect($timeSeries)->sum('visitors');
-    $chartBucketCount = $n;
+    $chartIntervalCount = $n;
     $hasChartData = collect($timeSeries)->contains(fn ($point) => $point['pageviews'] > 0 || $point['visitors'] > 0);
     $hasPeriodData = $pageviews > 0
         || $visitors > 0
@@ -132,6 +132,18 @@
 @endphp
 
 @section('content')
+    @if ($recentEvents->isEmpty())
+        <section class="onboarding reveal" aria-labelledby="onboarding-title">
+            <h2 id="onboarding-title">Commencer à collecter des données</h2>
+            <p>Ajoutez la directive <code>@@analytics</code> au <code>&lt;head&gt;</code> de votre site. Les données apparaîtront ici après la première visite.</p>
+        </section>
+    @elseif (! $hasPeriodData)
+        <section class="period-empty-notice reveal" aria-labelledby="period-empty-title">
+            <h2 id="period-empty-title">Aucune donnée sur cette période</h2>
+            <p>Des interactions ont déjà été collectées. Essayez une période plus longue pour les retrouver.</p>
+        </section>
+    @endif
+
     <div class="section-intro reveal">
         <h2>Vue d'ensemble</h2>
         <p>Les variations comparent cette période à la précédente, de même durée.</p>
@@ -156,6 +168,36 @@
         @endforeach
     </div>
 
+    <details class="kpi-help reveal">
+        <summary>Comprendre les indicateurs</summary>
+        <dl class="kpi-definitions">
+            <div>
+                <dt>Visiteurs uniques</dt>
+                <dd>Un visiteur est identifié par un identifiant aléatoire conservé dans le stockage local du navigateur — aucun cookie, aucun fingerprinting. Un même visiteur qui revient sur la période ne compte qu'une fois.</dd>
+            </div>
+            <div>
+                <dt>Pages vues</dt>
+                <dd>Nombre total de chargements de page enregistrés pendant la période. Un visiteur peut générer plusieurs pages vues.</dd>
+            </div>
+            <div>
+                <dt>Sessions démarrées</dt>
+                <dd>Sessions dont la date de démarrage (<code>started_at</code>) appartient à la période, en excluant le visiteur serveur partagé. Une session se poursuit tant que l'inactivité ne dépasse pas 30 minutes.</dd>
+            </div>
+            <div>
+                <dt>Pages vues / visiteur</dt>
+                <dd>Nombre de pages vues divisé par le nombre de visiteurs uniques sur la période.</dd>
+            </div>
+            <div>
+                <dt>Taux de rebond</dt>
+                <dd>Part des sessions démarrées sur la période qui n'ont vu qu'une seule page.</dd>
+            </div>
+            <div>
+                <dt>Durée moyenne</dt>
+                <dd>Temps moyen entre le démarrage et la dernière activité des sessions démarrées sur la période, plafonné à la fin de la période analysée.</dd>
+            </div>
+        </dl>
+    </details>
+
     <div class="panel reveal">
         <h2>Fréquentation</h2>
         <p class="panel-subtitle">Pages vues et visiteurs uniques par {{ $period === '24h' ? 'heure' : 'jour' }}.</p>
@@ -169,13 +211,13 @@
                         <span class="legend-dot vis" aria-hidden="true"></span> Visiteurs
                     </button>
                 </div>
-                <span class="muted">Survolez ou sélectionnez un point</span>
+                <span class="muted">Survolez un point pour afficher sa valeur ; ouvrez le tableau pour le détail.</span>
             </div>
-            <div class="chart-wrap" data-chart>
+            <div class="chart-scroll" data-chart tabindex="0" role="region" aria-label="Graphique de fréquentation, défilement horizontal">
                 <div class="chart-tooltip" role="status" aria-live="polite" hidden></div>
-                <svg viewBox="0 0 {{ $chart['w'] }} {{ $chart['h'] }}" preserveAspectRatio="none" role="img" aria-labelledby="traffic-chart-title traffic-chart-description" aria-describedby="traffic-chart-summary">
+                <svg width="{{ $chart['w'] }}" height="{{ $chart['h'] }}" viewBox="0 0 {{ $chart['w'] }} {{ $chart['h'] }}" role="img" aria-labelledby="traffic-chart-title traffic-chart-description" aria-describedby="traffic-chart-summary">
                     <title id="traffic-chart-title">Fréquentation sur la période</title>
-                    <desc id="traffic-chart-description">Évolution des pages vues et des visiteurs uniques.</desc>
+                    <desc id="traffic-chart-description">Évolution visuelle des pages vues et des visiteurs uniques. Le bilan complet des intervalles du tableau reste indépendant des séries masquées.</desc>
                     <g class="chart-grid" aria-hidden="true">
                         @for ($i = 0; $i <= $gridLines; $i++)
                             @php
@@ -198,19 +240,20 @@
                             <path class="chart-area {{ $seriesClass }}" d="{{ $areaPath($seriesKey) }}" />
                             <polyline class="chart-line {{ $seriesClass }}" points="{{ $linePoints($seriesKey) }}" />
                             @foreach ($chartPoints[$seriesKey] as $point)
-                                <circle class="chart-point {{ $seriesClass }}" data-chart-point tabindex="0" role="img" cx="{{ $point['x'] }}" cy="{{ $point['y'] }}" r="4" aria-label="{{ $point['label'] }} : {{ $point['value'] }} {{ $seriesKey === 'pageviews' ? 'pages vues' : 'visiteurs' }}" data-tooltip="{{ $point['label'] }} — {{ $point['value'] }} {{ $seriesKey === 'pageviews' ? 'pages vues' : 'visiteurs' }}" />
+                                <circle class="chart-point {{ $seriesClass }}" data-chart-point cx="{{ $point['x'] }}" cy="{{ $point['y'] }}" r="4" data-tooltip="{{ $point['label'] }} — {{ $point['value'] }} {{ $seriesKey === 'pageviews' ? 'pages vues' : 'visiteurs' }}" />
                             @endforeach
                         </g>
                     @endforeach
                 </svg>
             </div>
-            <p id="traffic-chart-summary" class="chart-summary sr-only" role="status">Résumé vocal : {{ number_format($chartPageviews, 0, ',', ' ') }} {{ $chartPageviews === 1 ? 'page vue' : 'pages vues' }}, {{ number_format($chartVisitors, 0, ',', ' ') }} {{ $chartVisitors === 1 ? 'visiteur unique' : 'visiteurs uniques' }}, sur {{ $chartBucketCount }} {{ $chartBucketCount === 1 ? 'bucket affiché' : 'buckets affichés' }}. Le bucket courant incomplet n'est pas inclus.</p>
+            <p id="traffic-chart-summary" class="chart-summary sr-only" role="status">Bilan complet des intervalles du tableau sur la période, indépendant du filtre visuel : {{ number_format($chartPageviews, 0, ',', ' ') }} {{ $chartPageviews === 1 ? 'page vue' : 'pages vues' }}, {{ number_format($chartVisitors, 0, ',', ' ') }} {{ $chartVisitors === 1 ? 'visiteur unique' : 'visiteurs uniques' }}. Le tableau couvre {{ $chartIntervalCount }} {{ $chartIntervalCount === 1 ? 'intervalle' : 'intervalles' }}. L'intervalle courant incomplet n'est pas inclus.</p>
             <details class="chart-data-details">
                 <summary>Afficher les données en tableau</summary>
-                <p class="chart-data-note muted">Le bucket courant incomplet n'est pas inclus dans les données affichées.</p>
-                <div class="table-scroll">
+                <p class="chart-data-note muted">L'intervalle courant incomplet n'est pas inclus dans les données affichées.</p>
+                <div class="table-scroll" tabindex="0" role="region" aria-label="Données détaillées du graphique, défilement horizontal">
+                    <span class="scroll-hint" aria-hidden="true">Faites défiler horizontalement →</span>
                     <table>
-                        <caption class="sr-only">Données de fréquentation par {{ $period === '24h' ? 'heure' : 'jour' }} : seuls les buckets affichés sont listés.</caption>
+                        <caption class="sr-only">Données de fréquentation par {{ $period === '24h' ? 'heure' : 'jour' }} : seuls les intervalles affichés sont listés.</caption>
                         <thead>
                             <tr>
                                 <th scope="col">Période</th>
@@ -221,7 +264,7 @@
                         <tbody>
                             @foreach ($timeSeries as $point)
                                 <tr>
-                                    <td>{{ $point['label'] }}</td>
+                                    <th scope="row">{{ $point['label'] }}</th>
                                     <td class="num">{{ $point['pageviews'] }}</td>
                                     <td class="num">{{ $point['visitors'] }}</td>
                                 </tr>
@@ -230,9 +273,8 @@
                     </table>
                 </div>
             </details>
-            <script defer src="{{ route('analytics.dashboard.script') }}"></script>
         @elseif ($hasPeriodData)
-            <div class="empty">La période contient des données, mais le bucket en cours n'est pas clôturé. Le graphique l'affichera à sa clôture.</div>
+            <div class="empty">La période contient des données, mais l'intervalle en cours n'est pas clôturé. Le graphique l'affichera à sa clôture.</div>
         @else
             <div class="empty">Aucune donnée de fréquentation sur cette période.</div>
         @endif
@@ -245,15 +287,17 @@
             @if ($topPages->isEmpty())
                 <div class="empty">Aucune page vue sur cette période.</div>
             @else
-                <div class="table-scroll">
+                <div class="table-scroll" tabindex="0" role="region" aria-label="Pages les plus consultées, défilement horizontal">
+                    <span class="scroll-hint" aria-hidden="true">Faites défiler horizontalement →</span>
                     <table>
+                        <caption class="sr-only">Pages les plus consultées sur la période</caption>
                         <thead>
-                            <tr><th>Page</th><th class="num">Vues</th><th class="num">Visiteurs</th><th class="num">Pages / visiteur</th></tr>
+                            <tr><th scope="col">Page</th><th scope="col" class="num">Vues</th><th scope="col" class="num">Visiteurs</th><th scope="col" class="num">Pages vues / visiteur</th></tr>
                         </thead>
                         <tbody>
                             @foreach ($topPages as $row)
                                 <tr>
-                                    <td class="url" title="{{ $row->url }}">{{ $row->url ?? '—' }}</td>
+                                    <th scope="row" class="url" title="{{ $row->url }}">{{ $row->url ?? '—' }}</th>
                                     <td class="num">{{ $row->pageviews }}</td>
                                     <td class="num">{{ $row->visitors }}</td>
                                     <td class="num">{{ number_format($row->pagesPerVisitor, 1, ',', ' ') }}</td>
@@ -277,7 +321,7 @@
                         <div class="bar-row">
                             <div class="bar-row-head"><span title="{{ $row->source }}">{{ $row->source }}</span><span>{{ number_format($share, 1, ',', ' ') }} % · {{ $row->pageviews }} vues</span></div>
                             <div class="bar-track" aria-hidden="true"><div class="bar-fill" style="width: {{ $share }}%"></div></div>
-                            <div class="bar-row-meta"><span>{{ $row->visitors }} visiteurs uniques</span><span>{{ number_format($row->pagesPerVisitor, 1, ',', ' ') }} pages / visiteur</span></div>
+                            <div class="bar-row-meta"><span>{{ $row->visitors }} visiteurs uniques</span><span>{{ number_format($row->pagesPerVisitor, 1, ',', ' ') }} pages vues / visiteur</span></div>
                         </div>
                     @endforeach
                 </div>
@@ -311,12 +355,14 @@
             @if ($topEvents->isEmpty())
                 <div class="empty">Aucun événement custom sur cette période.</div>
             @else
-                <div class="table-scroll">
+                <div class="table-scroll" tabindex="0" role="region" aria-label="Événements principaux, défilement horizontal">
+                    <span class="scroll-hint" aria-hidden="true">Faites défiler horizontalement →</span>
                     <table>
-                        <thead><tr><th>Événement</th><th class="num">Occurrences</th></tr></thead>
+                        <caption class="sr-only">Événements principaux sur la période</caption>
+                        <thead><tr><th scope="col">Événement</th><th scope="col" class="num">Occurrences</th></tr></thead>
                         <tbody>
                             @foreach ($topEvents as $row)
-                                <tr><td>{{ $row->name }}</td><td class="num">{{ $row->count }}</td></tr>
+                                <tr><th scope="row">{{ $row->name }}</th><td class="num">{{ $row->count }}</td></tr>
                             @endforeach
                         </tbody>
                     </table>
@@ -332,10 +378,12 @@
                 @if ($breakdown['rows']->isEmpty())
                     <div class="empty">Aucune donnée disponible sur cette période.</div>
                 @else
-                    <table>
+                    <table class="table-compact">
+                        <caption class="sr-only">{{ $breakdown['title'] }} des visiteurs sur la période</caption>
+                        <thead class="sr-only"><tr><th scope="col">{{ $breakdown['title'] === 'Navigateurs' ? 'Navigateur' : 'Système' }}</th><th scope="col">Interactions</th></tr></thead>
                         <tbody>
                             @foreach ($breakdown['rows'] as $row)
-                                <tr><td>{{ $row->label }}</td><td class="num">{{ $row->count }}</td></tr>
+                                <tr><th scope="row">{{ $row->label }}</th><td class="num">{{ $row->count }}</td></tr>
                             @endforeach
                         </tbody>
                     </table>
@@ -348,10 +396,12 @@
             @if ($topCountries->isEmpty())
                 <div class="empty">Aucun pays identifié sur cette période.</div>
             @else
-                <table>
+                <table class="table-compact">
+                    <caption class="sr-only">Pays des visiteurs sur la période</caption>
+                    <thead class="sr-only"><tr><th scope="col">Pays</th><th scope="col">Visiteurs uniques</th></tr></thead>
                     <tbody>
                         @foreach ($topCountries as $row)
-                            <tr><td>{{ $countryName($row->code) }}</td><td class="num">{{ $row->visitors }}</td></tr>
+                            <tr><th scope="row">{{ $countryName($row->code) }}</th><td class="num">{{ $row->visitors }}</td></tr>
                         @endforeach
                     </tbody>
                 </table>
@@ -361,17 +411,19 @@
 
     <div class="panel reveal">
         <h2>Flux récent</h2>
-        <p class="panel-subtitle">Les 20 dernières interactions enregistrées.</p>
+        <p class="panel-subtitle">Les 20 dernières interactions enregistrées, toutes périodes confondues.</p>
         @if ($recentEvents->isEmpty())
             <div class="empty">Aucun événement récent à afficher.</div>
         @else
-            <div class="table-scroll">
+            <div class="table-scroll" tabindex="0" role="region" aria-label="Flux récent, défilement horizontal">
+                <span class="scroll-hint" aria-hidden="true">Faites défiler horizontalement →</span>
                 <table>
-                    <thead><tr><th>Date</th><th>Type</th><th>Détail</th><th>Navigateur</th></tr></thead>
+                    <caption class="sr-only">20 dernières interactions, toutes périodes confondues</caption>
+                    <thead><tr><th scope="col">Date</th><th scope="col">Type</th><th scope="col">Détail</th><th scope="col">Navigateur</th></tr></thead>
                     <tbody>
                         @foreach ($recentEvents as $event)
                             <tr>
-                                <td>{{ $event->created_at->translatedFormat('d M Y H:i') }}</td>
+                                <th scope="row">{{ $event->created_at->translatedFormat('d M Y H:i') }}</th>
                                 <td><span class="badge {{ $event->type }}">{{ $event->type === 'pageview' ? 'Page vue' : 'Événement' }}</span></td>
                                 <td class="url" title="{{ $event->url ?? '' }}">{{ $event->name ?? $event->url ?? '—' }}</td>
                                 <td>{{ $event->visitor?->browser ?? '—' }}</td>
@@ -382,4 +434,6 @@
             </div>
         @endif
     </div>
+
+    <script defer src="{{ route('analytics.dashboard.script') }}"></script>
 @endsection

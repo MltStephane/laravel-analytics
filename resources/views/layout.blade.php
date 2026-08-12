@@ -67,7 +67,7 @@
             transition: color .16s ease, border-color .16s ease, background .16s ease;
         }
         .periods a:hover { color: var(--text); border-color: #455575; }
-        .periods a.active { color: #fff; background: var(--accent); border-color: var(--accent); }
+        .periods a.active { color: #07101f; background: var(--accent-strong); border-color: var(--accent-strong); font-weight: 700; }
         main { min-width: 0; }
         .section-intro { margin: 0 0 16px; }
         .section-intro h2 { margin: 0; font-size: 18px; letter-spacing: -.02em; }
@@ -86,10 +86,39 @@
         .card { min-width: 0; border-radius: 12px; padding: 15px; }
         .card .label {
             color: var(--text-muted);
-            font-size: 11px;
+            font-size: 12px;
             text-transform: uppercase;
             letter-spacing: .07em;
         }
+        .kpi-help {
+            margin: -4px 0 18px;
+            padding: 13px 15px;
+            border: 1px solid var(--panel-border);
+            border-radius: 10px;
+            background: rgba(17, 23, 34, .76);
+        }
+        .kpi-help summary { color: var(--accent-strong); cursor: pointer; font-weight: 650; }
+        .kpi-help summary:focus-visible, .chart-data-details summary:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 3px; }
+        .kpi-definitions {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 16px 20px;
+            margin: 16px 0 2px;
+        }
+        .kpi-definitions div { min-width: 0; }
+        .kpi-definitions dt { color: var(--text); font-weight: 650; }
+        .kpi-definitions dd { margin: 4px 0 0; color: var(--text-muted); font-size: 13px; line-height: 1.55; }
+        code { color: #c9d5ff; font-size: .94em; }
+        .onboarding, .period-empty-notice {
+            margin-bottom: 18px;
+            padding: 18px 20px;
+            border: 1px solid rgba(62, 214, 177, .42);
+            border-radius: 12px;
+            background: rgba(62, 214, 177, .08);
+        }
+        .period-empty-notice { border-color: rgba(124, 156, 255, .35); background: rgba(124, 156, 255, .07); }
+        .onboarding h2, .period-empty-notice h2 { margin: 0 0 5px; font-size: 16px; }
+        .onboarding p, .period-empty-notice p { margin: 0; color: #bac6d8; }
         .card .value { font-size: clamp(21px, 3vw, 29px); font-weight: 700; margin-top: 8px; letter-spacing: -.04em; }
         .card .suffix { color: var(--text-muted); font-size: 14px; margin-left: 2px; }
         .card .comparison { display: flex; align-items: center; gap: 5px; min-height: 20px; margin-top: 8px; font-size: 12px; }
@@ -100,7 +129,7 @@
         .change.neutral { color: var(--text-muted); }
         .panel { min-width: 0; border-radius: 14px; padding: 18px; margin-bottom: 18px; }
         .panel h2 { margin: 0 0 13px; font-size: 15px; font-weight: 650; letter-spacing: -.01em; }
-        .panel-subtitle { color: var(--text-muted); font-size: 12px; margin: -7px 0 13px; }
+        .panel-subtitle { color: #a6b3c6; font-size: 13px; margin: -7px 0 13px; }
         .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; align-items: start; }
         .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; align-items: start; }
         .grid-2 > .panel, .grid-3 > .panel { margin-bottom: 0; }
@@ -124,8 +153,8 @@
         .legend-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; }
         .legend-dot.pv { background: var(--accent); }
         .legend-dot.vis { background: var(--accent-2); }
-        .chart-wrap { position: relative; min-height: 220px; }
-        .chart-wrap svg { display: block; width: 100%; height: 300px; overflow: visible; }
+        .chart-scroll { position: relative; width: 100%; overflow-x: auto; overflow-y: hidden; }
+        .chart-scroll svg { display: block; width: max(720px, 100%); height: auto; aspect-ratio: 16 / 5; }
         .chart-grid line { stroke: #273247; stroke-width: 1; stroke-dasharray: 3 4; }
         .chart-grid text, .chart-label { fill: var(--text-muted); font-size: 10px; }
         .chart-area { opacity: .16; }
@@ -136,7 +165,8 @@
         .chart-area.vis { fill: var(--accent-2); }
         .chart-point { fill: var(--panel-raised); stroke-width: 2; cursor: crosshair; }
         .chart-point:hover, .chart-point:focus { fill: currentColor; }
-        [data-series-layer].is-hidden { display: none; }
+        [data-series-layer] { opacity: 1; visibility: visible; }
+        [data-series-layer].is-hidden { opacity: 0; visibility: hidden; pointer-events: none; }
         .chart-tooltip {
             position: absolute;
             left: 12px;
@@ -153,17 +183,19 @@
         .chart-tooltip[hidden] { display: none; }
         .chart-data-details { margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(145, 160, 182, .13); }
         .chart-data-details summary { color: var(--accent-strong); cursor: pointer; font-weight: 600; }
-        .chart-data-details summary:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 3px; }
-        .chart-data-note { margin: 10px 0 0; font-size: 12px; }
+        .chart-data-note { margin: 10px 0 0; font-size: 13px; }
         .empty { color: var(--text-muted); text-align: center; padding: 28px 12px; border: 1px dashed #334057; border-radius: 9px; }
         .table-scroll { overflow-x: auto; }
+        .scroll-hint { display: none; color: var(--text-muted); font-size: 12px; text-align: right; margin: 0 2px 6px; }
         table { width: 100%; min-width: 430px; border-collapse: collapse; }
+        .table-compact { width: 100%; min-width: 0; }
         th, td { text-align: left; padding: 9px 8px; border-bottom: 1px solid rgba(145, 160, 182, .13); }
-        tbody tr:last-child td { border-bottom: 0; }
+        tbody tr:last-child td, tbody tr:last-child th { border-bottom: 0; }
         tbody tr:hover { background: rgba(124, 156, 255, .045); }
-        th { color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+        th { color: #a6b3c6; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; font-weight: 650; }
+        tbody th { color: var(--text); font-size: inherit; text-transform: none; letter-spacing: normal; font-weight: 500; }
         td.num, th.num { text-align: right; white-space: nowrap; }
-        td.url { max-width: 310px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        td.url, th.url { max-width: 310px; overflow-wrap: anywhere; word-break: break-word; }
         .muted { color: var(--text-muted); }
         .bar-list { display: grid; gap: 13px; }
         .bar-row-head, .bar-row-meta { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
@@ -206,6 +238,7 @@
                 from { opacity: 0; transform: translateY(6px); }
                 to { opacity: 1; transform: translateY(0); }
             }
+            [data-series-layer] { transition: opacity .16s ease, visibility .16s ease; }
         }
         @media (max-width: 1060px) {
             .cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -216,7 +249,9 @@
             .top-actions { align-items: flex-start; width: 100%; justify-content: space-between; }
             .period-context { text-align: left; }
             .grid-2, .grid-3 { grid-template-columns: 1fr; gap: 14px; }
+            .kpi-definitions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             .panel { padding: 14px; }
+            .scroll-hint { display: block; }
         }
         @media (max-width: 480px) {
             .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
@@ -225,8 +260,7 @@
             .top-actions { display: block; }
             .periods { margin-top: 12px; }
             .periods a { flex: 1 1 auto; text-align: center; }
-            .chart-wrap { min-height: 260px; }
-            .chart-wrap svg { height: 260px; }
+            .kpi-definitions { grid-template-columns: 1fr; }
         }
     </style>
 </head>
