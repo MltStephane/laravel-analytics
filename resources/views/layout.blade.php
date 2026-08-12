@@ -249,7 +249,18 @@
         <main>
             @yield('content')
         </main>
-        <footer>laravel-analytics — aucune donnée personnelle, aucun cookie.</footer>
+        @php
+            $analyticsPackageVersion = 'dev';
+
+            try {
+                if (class_exists(\Composer\InstalledVersions::class)) {
+                    $analyticsPackageVersion = \Composer\InstalledVersions::getPrettyVersion('mltstephane/laravel-analytics') ?: 'dev';
+                }
+            } catch (\Throwable) {
+                $analyticsPackageVersion = 'dev';
+            }
+        @endphp
+        <footer>laravel-analytics — aucune donnée personnelle, aucun cookie. Version du package : {{ $analyticsPackageVersion }}</footer>
     </div>
 </body>
 </html>

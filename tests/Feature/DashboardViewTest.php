@@ -2,6 +2,7 @@
 
 namespace MltStephane\LaravelAnalytics\Tests\Feature;
 
+use Composer\InstalledVersions;
 use Illuminate\Support\Carbon;
 use MltStephane\LaravelAnalytics\Models\Event;
 use MltStephane\LaravelAnalytics\Models\Session;
@@ -141,6 +142,35 @@ class DashboardViewTest extends TestCase
         $response->assertSee('—', false);
         $response->assertDontSee('id="traffic-chart-summary"', false);
         $response->assertDontSee('<details class="chart-data-details">', false);
+    }
+
+    public function test_dashboard_footer_displays_the_package_version_or_safe_fallback(): void
+    {
+        $expectedVersion = 'dev';
+
+        try {
+            if (
+                class_exists(InstalledVersions::class)
+                && InstalledVersions::isInstalled('mltstephane/laravel-analytics')
+            ) {
+                $expectedVersion = InstalledVersions::getPrettyVersion('mltstephane/laravel-analytics') ?: 'dev';
+            }
+        } catch (\Throwable) {
+            $expectedVersion = 'dev';
+        }
+
+        $this->withoutMiddleware();
+
+        $response = $this->get(route('analytics.dashboard', ['period' => '7d']));
+
+        $response->assertOk();
+        $matches = [];
+        $this->assertSame(
+            1,
+            preg_match('/Version du package : ([^<]+)<\/footer>/', (string) $response->getContent(), $matches)
+        );
+        $this->assertNotEmpty($matches[1]);
+        $this->assertSame($expectedVersion, $matches[1]);
     }
 
     public function test_dashboard_script_route_returns_static_javascript(): void
