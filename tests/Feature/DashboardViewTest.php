@@ -54,6 +54,10 @@ class DashboardViewTest extends TestCase
         $response->assertSee('data-series-toggle="pageviews"', false);
         $response->assertSee('data-series-toggle="visitors"', false);
         $response->assertSee('data-chart-point', false);
+        $response->assertSee('data-label=', false);
+        $response->assertSee('data-pageviews=', false);
+        $response->assertSee('data-visitors=', false);
+        $response->assertSee('class="chart-hit"', false);
         $response->assertSee('<details class="chart-data-details">', false);
         $response->assertSee('Afficher les données en tableau', false);
         $response->assertSee('id="traffic-chart-summary"', false);
@@ -109,6 +113,48 @@ class DashboardViewTest extends TestCase
             $this->assertNotFalse($chartPosition);
             $this->assertNotFalse($detailsPosition);
             $this->assertLessThan($detailsPosition, $chartPosition);
+        } finally {
+            Carbon::setTestNow($previousNow);
+        }
+    }
+
+    public function test_dashboard_chart_points_carry_merged_tooltip_data_for_the_interval(): void
+    {
+        $previousNow = Carbon::getTestNow();
+        Carbon::setTestNow(Carbon::create(2026, 8, 12, 12, 0, 0));
+
+        try {
+            // Deux visiteurs distincts, le même jour complet (10 août) : l'intervalle
+            // doit porter pageviews=2 ET visitors=2, fusionnés sur chaque cercle du point.
+            $this->seedDashboardEvent(Carbon::create(2026, 8, 10, 15, 30, 0), 'view-merged-a');
+            $this->seedDashboardEvent(Carbon::create(2026, 8, 10, 16, 0, 0), 'view-merged-b');
+            $this->withoutMiddleware();
+
+            $response = $this->get(route('analytics.dashboard', ['period' => '7d']));
+
+            $response->assertOk();
+
+            $html = (string) $response->getContent();
+            $normalizedHtml = (string) preg_replace('/\s+/', ' ', $html);
+
+            // Les 4 cercles du point « 10 août » (2 séries × hit + visible) portent
+            // les valeurs fusionnées : 2 pages vues, 2 visiteurs, quel que soit le
+            // cercle survolé.
+            $this->assertSame(
+                4,
+                preg_match_all('/<circle[^>]*data-label="10 août"[^>]*data-pageviews="2"[^>]*data-visitors="2"[^>]*>/', $normalizedHtml)
+            );
+
+            // Chaque intervalle du tableau (7 jours complets) est dessiné par 2 séries,
+            // chaque point de série étant rendu par 2 cercles porteurs des attributs
+            // fusionnés → 4 cercles data-pageviews par intervalle.
+            $detailsStart = strpos($html, '<details class="chart-data-details">');
+            $detailsEnd = strpos($html, '</details>', $detailsStart);
+            $detailsHtml = substr($html, $detailsStart, $detailsEnd - $detailsStart);
+            $intervalCount = substr_count($detailsHtml, '<th scope="row">');
+
+            $this->assertSame(7, $intervalCount);
+            $this->assertSame(4 * $intervalCount, substr_count($html, 'data-pageviews="'));
         } finally {
             Carbon::setTestNow($previousNow);
         }
@@ -458,7 +504,7 @@ class DashboardViewTest extends TestCase
         $response->assertSee('class="chart-scroll" data-chart tabindex="0" role="region" aria-label="Graphique de fréquentation, défilement horizontal"', false);
         $response->assertSee('<svg width="960" height="300" viewBox="0 0 960 300"', false);
         $response->assertDontSee('preserveAspectRatio="none"', false);
-        $response->assertSee('Survolez un point pour afficher sa valeur ; ouvrez le tableau pour le détail.');
+        $response->assertSee('Survolez un point pour afficher les pages vues et les visiteurs ; ouvrez le tableau pour le détail.');
 
         preg_match_all('/<circle[^>]*data-chart-point[^>]*>/', (string) $response->getContent(), $points);
         $this->assertNotEmpty($points[0]);
@@ -466,6 +512,8 @@ class DashboardViewTest extends TestCase
             $this->assertStringNotContainsString('tabindex=', $point);
             $this->assertStringNotContainsString('role=', $point);
             $this->assertStringNotContainsString('aria-label=', $point);
+            $this->assertStringContainsString('data-pageviews=', $point);
+            $this->assertStringContainsString('data-visitors=', $point);
         }
     }
 

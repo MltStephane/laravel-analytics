@@ -100,8 +100,6 @@
             return [
                 'x' => round($x, 1),
                 'y' => round($y, 1),
-                'label' => $point['label'],
-                'value' => (int) $point[$seriesKey],
             ];
         })->all();
     }
@@ -214,7 +212,7 @@
                         <span class="legend-dot vis" aria-hidden="true"></span> Visiteurs
                     </button>
                 </div>
-                <span class="muted">Survolez un point pour afficher sa valeur ; ouvrez le tableau pour le détail.</span>
+                <span class="muted">Survolez un point pour afficher les pages vues et les visiteurs ; ouvrez le tableau pour le détail.</span>
             </div>
             <div class="chart-scroll" data-chart tabindex="0" role="region" aria-label="Graphique de fréquentation, défilement horizontal">
                 <div class="chart-tooltip" role="status" aria-live="polite" hidden></div>
@@ -242,8 +240,9 @@
                         <g id="chart-series-{{ $seriesKey }}" data-series-layer="{{ $seriesKey }}" aria-hidden="false">
                             <path class="chart-area {{ $seriesClass }}" d="{{ $areaPath($seriesKey) }}" />
                             <polyline class="chart-line {{ $seriesClass }}" points="{{ $linePoints($seriesKey) }}" />
-                            @foreach ($chartPoints[$seriesKey] as $point)
-                                <circle class="chart-point {{ $seriesClass }}" data-chart-point cx="{{ $point['x'] }}" cy="{{ $point['y'] }}" r="4" data-tooltip="{{ $point['label'] }} — {{ $point['value'] }} {{ $seriesKey === 'pageviews' ? 'pages vues' : 'visiteurs' }}" />
+                            @foreach ($chartPoints[$seriesKey] as $index => $point)
+                                <circle class="chart-hit" data-chart-point cx="{{ $point['x'] }}" cy="{{ $point['y'] }}" r="12" data-label="{{ $timeSeries[$index]['label'] }}" data-pageviews="{{ $timeSeries[$index]['pageviews'] }}" data-visitors="{{ $timeSeries[$index]['visitors'] }}" />
+                                <circle class="chart-point {{ $seriesClass }}" data-chart-point cx="{{ $point['x'] }}" cy="{{ $point['y'] }}" r="4" data-label="{{ $timeSeries[$index]['label'] }}" data-pageviews="{{ $timeSeries[$index]['pageviews'] }}" data-visitors="{{ $timeSeries[$index]['visitors'] }}" />
                             @endforeach
                         </g>
                     @endforeach

@@ -165,15 +165,18 @@
         .chart-area.vis { fill: var(--accent-2); }
         .chart-point { fill: var(--panel-raised); stroke-width: 2; cursor: crosshair; }
         .chart-point:hover, .chart-point:focus { fill: currentColor; }
+        .chart-hit { fill: transparent; stroke: none; pointer-events: all; cursor: crosshair; }
         [data-series-layer] { opacity: 1; visibility: visible; }
         [data-series-layer].is-hidden { opacity: 0; visibility: hidden; pointer-events: none; }
         .chart-tooltip {
             position: absolute;
-            left: 12px;
-            bottom: 6px;
-            padding: 6px 9px;
+            top: 0;
+            left: 0;
+            z-index: 5;
+            min-width: 150px;
+            padding: 8px 10px;
             border: 1px solid var(--panel-border);
-            border-radius: 7px;
+            border-radius: 8px;
             background: #0b1019;
             color: var(--text);
             box-shadow: var(--shadow);
@@ -181,6 +184,32 @@
             pointer-events: none;
         }
         .chart-tooltip[hidden] { display: none; }
+        .chart-tooltip-title {
+            font-weight: 700;
+            margin-bottom: 5px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid rgba(145, 160, 182, .15);
+        }
+        .chart-tooltip-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 3px;
+            white-space: nowrap;
+        }
+        .chart-tooltip-dot {
+            display: inline-block;
+            flex: none;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        .chart-tooltip-dot.pv { background: var(--accent); }
+        .chart-tooltip-dot.vis { background: var(--accent-2); }
+        .chart-tooltip-row .chart-tooltip-value {
+            margin-left: auto;
+            font-weight: 650;
+        }
         .chart-data-details { margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(145, 160, 182, .13); }
         .chart-data-details summary { color: var(--accent-strong); cursor: pointer; font-weight: 600; }
         .chart-data-note { margin: 10px 0 0; font-size: 13px; }
