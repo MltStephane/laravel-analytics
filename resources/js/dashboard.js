@@ -88,9 +88,39 @@
         tooltip.hidden = true;
     }
 
+    function visiblePointFor(point) {
+        if (point.classList.contains('chart-hit')) {
+            return point.nextElementSibling;
+        }
+
+        return point;
+    }
+
+    function highlightPoint(point) {
+        var visible = visiblePointFor(point);
+
+        if (visible) {
+            visible.classList.add('is-hovered');
+        }
+    }
+
+    function unhighlightPoint(point) {
+        var visible = visiblePointFor(point);
+
+        if (visible) {
+            visible.classList.remove('is-hovered');
+        }
+    }
+
     Array.prototype.forEach.call(points, function (point) {
-        point.addEventListener('mouseenter', function () { showTooltip(point); });
-        point.addEventListener('mouseleave', hideTooltip);
+        point.addEventListener('mouseenter', function () {
+            highlightPoint(point);
+            showTooltip(point);
+        });
+        point.addEventListener('mouseleave', function () {
+            unhighlightPoint(point);
+            hideTooltip();
+        });
     });
 
     Array.prototype.forEach.call(toggles, function (toggle) {

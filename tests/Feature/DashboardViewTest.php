@@ -58,6 +58,7 @@ class DashboardViewTest extends TestCase
         $response->assertSee('data-pageviews=', false);
         $response->assertSee('data-visitors=', false);
         $response->assertSee('class="chart-hit"', false);
+        $response->assertSee('.chart-point.is-hovered', false);
         $response->assertSee('<details class="chart-data-details">', false);
         $response->assertSee('Afficher les données en tableau', false);
         $response->assertSee('id="traffic-chart-summary"', false);
@@ -377,6 +378,7 @@ class DashboardViewTest extends TestCase
         $response->assertOk();
         $this->assertStringContainsString('application/javascript', (string) $response->headers->get('Content-Type'));
         $response->assertSee('textContent', false);
+        $response->assertSee('is-hovered', false);
     }
 
     public function test_dashboard_route_keeps_web_and_auth_middleware(): void

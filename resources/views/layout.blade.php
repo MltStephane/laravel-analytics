@@ -164,7 +164,7 @@
         .chart-area.pv { fill: var(--accent); }
         .chart-area.vis { fill: var(--accent-2); }
         .chart-point { fill: var(--panel-raised); stroke-width: 2; cursor: crosshair; }
-        .chart-point:hover, .chart-point:focus { fill: currentColor; }
+        .chart-point:hover, .chart-point:focus, .chart-point.is-hovered { fill: currentColor; r: 5px; }
         .chart-hit { fill: transparent; stroke: none; pointer-events: all; cursor: crosshair; }
         [data-series-layer] { opacity: 1; visibility: visible; }
         [data-series-layer].is-hidden { opacity: 0; visibility: hidden; pointer-events: none; }
