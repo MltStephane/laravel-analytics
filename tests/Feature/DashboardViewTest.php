@@ -558,4 +558,32 @@ class DashboardViewTest extends TestCase
         $response->assertSee('Systèmes');
         $response->assertSee('Pays');
     }
+
+    public function test_dashboard_cards_share_a_single_uniform_spacing(): void
+    {
+        $this->withoutMiddleware();
+
+        $response = $this->get(route('analytics.dashboard', ['period' => '7d']));
+
+        $response->assertOk();
+        $html = (string) $response->getContent();
+
+        // Token d'espacement uniforme entre cards : 2 × la moyenne actuelle (14px).
+        $this->assertStringContainsString('--card-gap: 28px;', $html);
+
+        // Toutes les grilles et blocs cards utilisent le token, pas des valeurs disparates.
+        $this->assertGreaterThanOrEqual(5, substr_count($html, 'gap: var(--card-gap);'));
+        $this->assertGreaterThanOrEqual(
+            7,
+            substr_count($html, 'margin-bottom: var(--card-gap);')
+                + substr_count($html, 'margin: 0 0 var(--card-gap);')
+        );
+
+        // Plus aucune card collée ni ancienne valeur divergente.
+        $this->assertStringNotContainsString('margin: -4px 0 18px;', $html);
+        $this->assertStringNotContainsString('gap: 10px;', $html);
+        $this->assertStringNotContainsString('gap: 8px;', $html);
+        $this->assertStringNotContainsString('gap: 14px;', $html);
+        $this->assertStringNotContainsString('margin-bottom: 18px;', $html);
+    }
 }

@@ -20,6 +20,8 @@
             --danger: #ff8b9d;
             --warning: #f6c76e;
             --shadow: 0 18px 48px rgba(0, 0, 0, .22);
+            /* Espacement uniforme entre cards : 2 × la moyenne actuelle (14px) */
+            --card-gap: 28px;
         }
         * { box-sizing: border-box; }
         html { min-width: 320px; }
@@ -69,14 +71,14 @@
         .periods a:hover { color: var(--text); border-color: #455575; }
         .periods a.active { color: #07101f; background: var(--accent-strong); border-color: var(--accent-strong); font-weight: 700; }
         main { min-width: 0; }
-        .section-intro { margin: 0 0 16px; }
+        .section-intro { margin: 0 0 var(--card-gap); }
         .section-intro h2 { margin: 0; font-size: 18px; letter-spacing: -.02em; }
         .section-intro p { margin: 3px 0 0; color: var(--text-muted); }
         .cards {
             display: grid;
             grid-template-columns: repeat(6, minmax(0, 1fr));
-            gap: 10px;
-            margin-bottom: 18px;
+            gap: var(--card-gap);
+            margin-bottom: var(--card-gap);
         }
         .card, .panel {
             background: linear-gradient(145deg, rgba(21, 29, 43, .98), rgba(17, 23, 34, .98));
@@ -91,7 +93,7 @@
             letter-spacing: .07em;
         }
         .kpi-help {
-            margin: -4px 0 18px;
+            margin: 0 0 var(--card-gap);
             padding: 13px 15px;
             border: 1px solid var(--panel-border);
             border-radius: 10px;
@@ -110,7 +112,7 @@
         .kpi-definitions dd { margin: 4px 0 0; color: var(--text-muted); font-size: 13px; line-height: 1.55; }
         code { color: #c9d5ff; font-size: .94em; }
         .onboarding, .period-empty-notice {
-            margin-bottom: 18px;
+            margin-bottom: var(--card-gap);
             padding: 18px 20px;
             border: 1px solid rgba(62, 214, 177, .42);
             border-radius: 12px;
@@ -127,11 +129,11 @@
         .change.positive { color: var(--accent-2); }
         .change.negative { color: var(--danger); }
         .change.neutral { color: var(--text-muted); }
-        .panel { min-width: 0; border-radius: 14px; padding: 18px; margin-bottom: 18px; }
+        .panel { min-width: 0; border-radius: 14px; padding: 18px; margin-bottom: var(--card-gap); }
         .panel h2 { margin: 0 0 13px; font-size: 15px; font-weight: 650; letter-spacing: -.01em; }
         .panel-subtitle { color: #a6b3c6; font-size: 13px; margin: -7px 0 13px; }
-        .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; align-items: start; }
-        .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; align-items: start; }
+        .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--card-gap); align-items: start; margin-bottom: var(--card-gap); }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--card-gap); align-items: start; margin-bottom: var(--card-gap); }
         .grid-2 > .panel, .grid-3 > .panel { margin-bottom: 0; }
         .chart-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
         .legend { display: flex; gap: 7px; flex-wrap: wrap; }
@@ -277,13 +279,13 @@
             header.top { align-items: flex-start; gap: 16px; }
             .top-actions { align-items: flex-start; width: 100%; justify-content: space-between; }
             .period-context { text-align: left; }
-            .grid-2, .grid-3 { grid-template-columns: 1fr; gap: 14px; }
+            .grid-2, .grid-3 { grid-template-columns: 1fr; gap: var(--card-gap); }
             .kpi-definitions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             .panel { padding: 14px; }
             .scroll-hint { display: block; }
         }
         @media (max-width: 480px) {
-            .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+            .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--card-gap); }
             .card { padding: 12px; }
             .card .value { font-size: 22px; }
             .top-actions { display: block; }
