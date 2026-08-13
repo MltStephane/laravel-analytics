@@ -363,13 +363,19 @@ class DashboardViewTest extends TestCase
         $response = $this->get(route('analytics.dashboard', ['period' => '7d']));
 
         $response->assertOk();
+        $response->assertSee('GitHub', false);
+        $response->assertSee('https://github.com/MltStephane/laravel-analytics', false);
+        $response->assertSee('https://x.com/mltstephane', false);
+        $response->assertSee('https://buymeacoffee.com/stephane', false);
+        $response->assertSee('no personal data, no cookies.', false);
+
         $matches = [];
         $this->assertSame(
             1,
-            preg_match('/Version du package : ([^<]+)<\/footer>/', (string) $response->getContent(), $matches)
+            preg_match('/Version du package:\s*([^<]+)<\/span>/', (string) $response->getContent(), $matches)
         );
         $this->assertNotEmpty($matches[1]);
-        $this->assertSame($expectedVersion, $matches[1]);
+        $this->assertSame($expectedVersion, trim($matches[1]));
     }
 
     public function test_dashboard_script_src_is_versioned_with_content_hash(): void

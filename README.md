@@ -10,7 +10,7 @@ Privacy-first analytics and observability for Laravel: track visitors and user a
 ## Features
 
 - **Built-in dashboard** — key metrics, time-series chart, top pages, sources, browsers, OS, devices, countries and events; server-rendered, no external assets (see [Dashboard](#dashboard)).
-- **One-line tracking** — `@analytics` Blade directive, `window.analytics.track()` from a ~2 Ko vanilla JS tracker, `Analytics::track()` / `Analytics::pageview()` from PHP, or declarative `data-analytics` attributes.
+- **One-line tracking** — `@analytics` Blade directive, `window.analytics.track()` from a ~2 kB vanilla JS tracker, `Analytics::track()` / `Analytics::pageview()` from PHP, or declarative `data-analytics` attributes.
 - **Privacy-first** — no cookies, no fingerprinting, no stored IP; visitors are identified by a client-side uuid kept in `localStorage`; Do-Not-Track is honored by default.
 - **Sessions** — landing page, referrer domain, UTM parameters, bounce rate and visit duration, with a 30-minute inactivity window.
 - **Secure collection endpoint** — POST-only, domain allow-list, per-IP rate limit, bot detection and strictly validated payloads.

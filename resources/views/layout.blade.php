@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -20,7 +20,7 @@
             --danger: #ff8b9d;
             --warning: #f6c76e;
             --shadow: 0 18px 48px rgba(0, 0, 0, .22);
-            /* Espacement uniforme entre cards : 2 × la moyenne actuelle (14px) */
+            /* Uniform spacing between cards: 2 × the current average (14px) */
             --card-gap: 28px;
         }
         * { box-sizing: border-box; }
@@ -88,7 +88,7 @@
         .card { min-width: 0; border-radius: 12px; padding: 15px; }
         .card .label {
             color: var(--text-muted);
-            font-size: 12px;
+            font-size: 10px;
             text-transform: uppercase;
             letter-spacing: .07em;
         }
@@ -259,7 +259,35 @@
             white-space: nowrap;
             border: 0;
         }
-        footer { color: var(--text-muted); font-size: 12px; text-align: center; margin-top: 34px; }
+        footer {
+            margin-top: 34px;
+            padding: 16px 18px;
+            border: 1px solid rgba(145, 160, 182, .14);
+            border-radius: 14px;
+            background: rgba(17, 23, 34, .76);
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+        .footer-inner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+        .footer-links {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .footer-links a {
+            color: var(--accent-strong);
+            text-decoration: none;
+        }
+        .footer-links a:hover { text-decoration: underline; }
+        .footer-meta { text-align: right; }
+        .footer-meta strong { color: var(--text); font-weight: 650; }
         @media (prefers-reduced-motion: no-preference) {
             .reveal { animation: dashboard-in .42s ease both; }
             .reveal:nth-child(2) { animation-delay: 45ms; }
@@ -292,6 +320,7 @@
             .periods { margin-top: 12px; }
             .periods a { flex: 1 1 auto; text-align: center; }
             .kpi-definitions { grid-template-columns: 1fr; }
+            .footer-meta { text-align: left; }
         }
     </style>
 </head>
@@ -300,14 +329,14 @@
         <header class="top">
             <div class="brand">
                 <h1>Analytics</h1>
-                <p>Une lecture simple de votre audience, sans cookie ni donnée personnelle.</p>
+                <p>Simple insights into your audience, without cookies or personal data.</p>
             </div>
             <div class="top-actions">
                 @hasSection('period-context')
                     <div class="period-context">@yield('period-context')</div>
                 @endif
                 @hasSection('period-links')
-                    <nav class="periods" aria-label="Période d'analyse">@yield('period-links')</nav>
+                    <nav class="periods" aria-label="Analysis period">@yield('period-links')</nav>
                 @endif
             </div>
         </header>
@@ -325,7 +354,19 @@
                 $analyticsPackageVersion = 'dev';
             }
         @endphp
-        <footer>laravel-analytics — aucune donnée personnelle, aucun cookie. Version du package : {{ $analyticsPackageVersion }}</footer>
+        <footer aria-label="Project and privacy information">
+            <div class="footer-inner">
+                <div class="footer-links" aria-label="External links">
+                    <a href="https://github.com/MltStephane/laravel-analytics" target="_blank" rel="noopener noreferrer">GitHub</a>
+                    <a href="https://x.com/mltstephane" target="_blank" rel="noopener noreferrer">X</a>
+                    <a href="https://buymeacoffee.com/stephane" target="_blank" rel="noopener noreferrer">Buy Me a Coffee</a>
+                </div>
+                <div class="footer-meta">
+                    Privacy-first - no personal data - no cookies<br />
+                    <span>Version {{ $analyticsPackageVersion }}</span>
+                </div>
+            </div>
+        </footer>
     </div>
 </body>
 </html>
